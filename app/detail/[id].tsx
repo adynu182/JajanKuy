@@ -165,8 +165,8 @@ export default function DetailJajanan() {
 
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.btnAction} onPress={openMap}>
-            <Ionicons name="map" size={20} color="#fff" />
-            <Text style={styles.btnActionText}>Petunjuk Arah</Text>
+            <Ionicons name="location" size={20} color="#fff" />
+            <Text style={styles.btnActionText}>Map Google</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

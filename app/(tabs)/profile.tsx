@@ -160,7 +160,7 @@ export default function ProfileScreen() {
               style={[styles.roleBox, role === 'pengguna' && styles.roleBoxActive]} 
               onPress={() => setRole('pengguna')}
             >
-              <Ionicons name="cart" size={20} color={role === 'pengguna' ? '#fff' : '#666'} />
+              <Ionicons name="people" size={20} color={role === 'pengguna' ? '#fff' : '#666'} />
               <Text style={[styles.roleText, role === 'pengguna' && styles.roleTextActive]}>Pengguna</Text>
             </TouchableOpacity>
             <TouchableOpacity 
