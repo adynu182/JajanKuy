@@ -20,6 +20,7 @@ export default function ProfileScreen() {
 
   // New State for Name and Anti-Spam
   const [name, setName] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [spamAnswer, setSpamAnswer] = useState('');
   const [spamChallenge, setSpamChallenge] = useState({ q: '', a: 0 });
 
@@ -93,11 +94,13 @@ export default function ProfileScreen() {
         await setDoc(doc(db, "users", userCredential.user.uid), {
           name: name,
           email: email,
+          whatsapp: whatsapp.trim() ? `62${whatsapp.replace(/^0+/, '')}` : '',
           role: role,
           createdAt: new Date()
         });
         alert(`Berhasil daftar sebagai ${role}`);
         setName('');
+        setWhatsapp('');
         setSpamAnswer('');
       } else {
         await signInWithEmailAndPassword(auth, email, password);
@@ -122,6 +125,9 @@ export default function ProfileScreen() {
             Halo, {userData?.name || (userData?.role === 'penjual' ? 'Mitra Penjual' : 'Sobat Jajan')}
           </Text>
           <Text style={styles.emailText}>{user.email}</Text>
+          {userData?.whatsapp ? (
+            <Text style={styles.emailText}>WA: +{userData.whatsapp}</Text>
+          ) : null}
 
           <View style={styles.divider} />
 
@@ -171,12 +177,24 @@ export default function ProfileScreen() {
       <Text style={styles.title}>{isRegister ? 'Daftar Akun' : 'Masuk JajanKuy'}</Text>
 
       {isRegister && (
-        <TextInput
-          style={styles.input}
-          placeholder="Nama Lengkap"
-          value={name}
-          onChangeText={setName}
-        />
+        <>
+          <TextInput
+            style={styles.input}
+            placeholder="Nama / Username"
+            value={name}
+            onChangeText={setName}
+          />
+          <View style={styles.waContainer}>
+            <Text style={styles.waPrefix}>+62</Text>
+            <TextInput
+              style={styles.waInput}
+              placeholder="Nomor WhatsApp (opsional)"
+              value={whatsapp}
+              onChangeText={setWhatsapp}
+              keyboardType="phone-pad"
+            />
+          </View>
+        </>
       )}
 
       <TextInput
@@ -258,6 +276,9 @@ const styles = StyleSheet.create({
   eyeIcon: { padding: 10 },
   btnLogin: { backgroundColor: '#f4511e', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
   btnLogout: { backgroundColor: '#333', padding: 12, borderRadius: 10, alignItems: 'center', marginTop: 10, width: '100%' },
+  waContainer: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#ddd', marginBottom: 20 },
+  waPrefix: { fontSize: 16, color: '#333', fontWeight: 'bold', paddingHorizontal: 10 },
+  waInput: { flex: 1, padding: 10, fontSize: 16 },
   btnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   emailText: { fontSize: 16, marginVertical: 5, color: '#555' },
   switchText: { textAlign: 'center', marginTop: 20, color: '#f4511e' },

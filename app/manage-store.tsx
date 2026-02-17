@@ -93,7 +93,13 @@ export default function ManageStore() {
     });
 
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      const { manipulateAsync, SaveFormat } = require('expo-image-manipulator');
+      const manipulated = await manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 800 } }],
+        { compress: 0.7, format: SaveFormat.JPEG }
+      );
+      setImage(manipulated.uri);
       try {
         let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
         setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
@@ -199,7 +205,7 @@ export default function ManageStore() {
       </View>
 
       <Text style={styles.label}>Nama Gerobak / Warung</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Seblak Judes" />
+      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Seblak Judes" maxLength={36} />
 
       <Text style={styles.label}>Kategori (Pilih minimal satu)</Text>
       {/* <TextInput style={styles.input} value={category} onChangeText={setCategory} placeholder="Jajanan" /> */}
@@ -220,7 +226,7 @@ export default function ManageStore() {
       </View>
 
       <Text style={styles.label}>Harga Termurah (Rp)</Text>
-      <TextInput style={styles.input} value={minPrice} onChangeText={setMinPrice} keyboardType="numeric" placeholder="10000" />
+      <TextInput style={styles.input} value={minPrice} onChangeText={setMinPrice} keyboardType="numeric" placeholder="10000" maxLength={9} />
 
       <Text style={styles.label}>Catatan (Opsional)</Text>
       <TextInput
@@ -229,6 +235,7 @@ export default function ManageStore() {
         onChangeText={setNotes}
         placeholder="Contoh: Buka setiap sore, terima pesanan, dll."
         multiline
+        maxLength={100}
       />
 
       <Text style={styles.label}>Foto & Lokasi</Text>

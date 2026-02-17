@@ -30,6 +30,7 @@ export default function DetailJajanan() {
   const [userReview, setUserReview] = useState<any>(null); // State untuk review user saat ini
   const [isFavorite, setIsFavorite] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
+  const [ownerWhatsapp, setOwnerWhatsapp] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -100,6 +101,22 @@ export default function DetailJajanan() {
     checkFavorite();
   }, [id]);
 
+  // Fetch owner WhatsApp number
+  useEffect(() => {
+    if (!vendor?.ownerId) return;
+    const fetchOwnerWa = async () => {
+      try {
+        const ownerDoc = await getDoc(doc(db, "users", vendor.ownerId));
+        if (ownerDoc.exists()) {
+          setOwnerWhatsapp(ownerDoc.data().whatsapp || '');
+        }
+      } catch (e) {
+        console.error("Error fetching owner WA:", e);
+      }
+    };
+    fetchOwnerWa();
+  }, [vendor?.ownerId]);
+
   const toggleFavorite = async () => {
     if (!auth.currentUser) return Alert.alert("Ups!", "Login dulu untuk menyimpan favorit.");
 
@@ -131,6 +148,14 @@ export default function DetailJajanan() {
       Linking.openURL(url);
     } else {
       Alert.alert("Info", "Lokasi tidak tersedia.");
+    }
+  };
+
+  const openWhatsApp = () => {
+    if (ownerWhatsapp) {
+      Linking.openURL(`https://wa.me/${ownerWhatsapp}`);
+    } else {
+      Alert.alert("Info", "Nomor Tidak Tersedia");
     }
   };
 
@@ -271,7 +296,7 @@ export default function DetailJajanan() {
       <View style={styles.infoBox}>
         <Text style={styles.title}>{vendor?.name}</Text>
         <Text style={styles.category}>{vendor?.category}</Text>
-        <Text style={styles.price}>Mulai dari Rp {String(vendor?.minPrice || '-')}</Text>
+        <Text style={styles.price}>Mulai dari Rp {vendor?.minPrice?.toLocaleString() || '-'}</Text>
 
         {vendor?.notes ? (
           <View style={styles.noteContainer}>
@@ -283,7 +308,12 @@ export default function DetailJajanan() {
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.btnAction} onPress={openMap}>
             <Ionicons name="location" size={20} color="#fff" />
-            <Text style={styles.btnActionText}>Map Google</Text>
+            <Text style={styles.btnActionText}>Map</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.btnAction, styles.btnWa]} onPress={openWhatsApp}>
+            <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+            <Text style={styles.btnActionText}>WA</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -517,6 +547,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
     shadowColor: "#f4511e",
     shadowOpacity: 0.3
+  },
+  btnWa: {
+    backgroundColor: '#25D366',
+    shadowColor: '#25D366'
   }
 });
 

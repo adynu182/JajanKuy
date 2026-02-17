@@ -206,7 +206,7 @@ export default function MapScreen() {
                     <View style={styles.ratingRow}>
                       <MaterialIcons name="star" size={14} color={COLORS.primary} />
                       <Text style={styles.ratingText}>{vendor.rating}</Text>
-                      <Text style={styles.reviewText}>(120 reviews)</Text>
+                      <Text style={styles.reviewText}>{vendor.reviewCount ? vendor.reviewCount : 0} reviews</Text>
                     </View>
                   </View>
                   <View style={styles.badgeRow}>
@@ -214,7 +214,6 @@ export default function MapScreen() {
                       <MaterialIcons name="directions-walk" size={12} color={COLORS.primary} />
                       <Text style={styles.distanceText}>{vendor.distanceKm ? `${vendor.distanceKm} km` : 'Near'}</Text>
                     </View>
-                    <Text style={styles.statusText}>OPEN</Text>
                   </View>
                 </View>
               </View>
@@ -342,7 +341,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   card: {
-    width: 320,
+    width: 230,
     backgroundColor: 'white',
     borderRadius: 20,
     shadowColor: '#000',
@@ -409,11 +408,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
     textTransform: 'uppercase',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#22c55e', // green-500
   },
   cardAction: {
     paddingHorizontal: 12,
