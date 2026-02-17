@@ -1,10 +1,11 @@
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { collection, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { collection, getDocs, onSnapshot } from 'firebase/firestore'; // Make sure existing imports are preserved/merged
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { db } from '../../src/config/firebase';
+import { auth, db } from '../../src/config/firebase';
 
 const COLORS = {
   primary: "#f48c25",
@@ -30,8 +31,11 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<any>(null);
   const [sortOption, setSortOption] = useState<'closest' | 'cheapest' | 'expensive'>('closest');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [user, setUser] = useState<any>(null);
   const router = useRouter();
 
   // Fungsi menghitung jarak (Hasil dalam KM)
@@ -42,6 +46,31 @@ export default function HomeScreen() {
       c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p)) / 2;
     return 12742 * Math.asin(Math.sqrt(a));
   };
+
+  // Monitor Auth State
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (!currentUser) {
+        setFavorites([]);
+        setShowFavoritesOnly(false);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // Monitor Favorites
+  useEffect(() => {
+    if (!user) return;
+
+    const favRef = collection(db, "users", user.uid, "favorites");
+    const unsubscribe = onSnapshot(favRef, (snapshot) => {
+      const favIds = snapshot.docs.map(doc => doc.id); // doc.id is usually vendorId based on detail page logic
+      setFavorites(favIds);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   useEffect(() => {
     (async () => {
@@ -91,7 +120,12 @@ export default function HomeScreen() {
       );
     }
 
-    // 2. Sort
+    // 3. Filter by Favorites (Independent)
+    if (showFavoritesOnly) {
+      result = result.filter(v => favorites.includes(v.id));
+    }
+
+    // 4. Sort (Always applied)
     if (sortOption === 'closest') {
       result.sort((a, b) => a.distance - b.distance);
     } else if (sortOption === 'cheapest') {
@@ -101,13 +135,21 @@ export default function HomeScreen() {
     }
 
     setFilteredVendors(result);
-  }, [allVendors, sortOption, selectedCategory, searchQuery]);
+  }, [allVendors, sortOption, selectedCategory, searchQuery, favorites, showFavoritesOnly]);
 
   const handleCategoryPress = (categoryName: string) => {
     if (selectedCategory === categoryName) {
       setSelectedCategory(null); // Deselect
     } else {
       setSelectedCategory(categoryName);
+    }
+  };
+
+  const handleFilterPress = (opt: string) => {
+    if (opt === 'favorite') {
+      setShowFavoritesOnly(!showFavoritesOnly);
+    } else {
+      setSortOption(opt as any);
     }
   };
 
@@ -176,18 +218,28 @@ export default function HomeScreen() {
 
       {/* FILTERS */}
       <View style={styles.filterContainer}>
-        {['closest', 'cheapest', 'expensive'].map((opt) => {
+        {['closest', 'cheapest', 'expensive', 'favorite'].map((opt) => {
           const labels: Record<string, string> = { closest: 'Terdekat', cheapest: 'Termurah', expensive: 'Termahal' };
-          const isActive = sortOption === opt;
+          const isFavorite = opt === 'favorite';
+          const isActive = isFavorite ? showFavoritesOnly : sortOption === opt;
+
           return (
             <TouchableOpacity
               key={opt}
-              style={[styles.filterChip, isActive && styles.filterChipActive]}
-              onPress={() => setSortOption(opt as any)}
+              style={[
+                styles.filterChip,
+                isActive && styles.filterChipActive,
+                isFavorite && { borderColor: '#ef4444' } // Red border for heart
+              ]}
+              onPress={() => handleFilterPress(opt)}
             >
-              <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                {labels[opt]}
-              </Text>
+              {isFavorite ? (
+                <Ionicons name={isActive ? "heart" : "heart-outline"} size={20} color={isActive ? "white" : "#ef4444"} />
+              ) : (
+                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+                  {labels[opt]}
+                </Text>
+              )}
             </TouchableOpacity>
           )
         })}
@@ -432,8 +484,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   filterChipActive: {
     backgroundColor: COLORS.primary,

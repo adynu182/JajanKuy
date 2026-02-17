@@ -1,7 +1,7 @@
 // app/(tabs)/_layout.tsx
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs, useRouter } from 'expo-router';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
 
 const COLORS = {
   primary: "#f48c25",
@@ -25,8 +25,12 @@ export default function TabLayout() {
           headerTitle: "", // Hide default title
           headerLeft: () => (
             <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16, gap: 8 }}>
-              <View style={{ backgroundColor: COLORS.primary, padding: 6, borderRadius: 12 }}>
-                <MaterialIcons name="storefront" size={24} color="white" />
+              <View style={{ backgroundColor: COLORS.primary }}>
+                <Image
+                  source={require('../../assets/images/homeicon.webp')}
+                  style={{ width: 48, height: 48 }}
+                  resizeMode="contain"
+                />
               </View>
               <Text style={{ fontSize: 20, fontWeight: '800', color: COLORS.primary, letterSpacing: 0.5 }}>
                 JajanKuy

@@ -1,10 +1,10 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, ScrollView } from 'react-native';
-import { useState, useEffect } from 'react';
-import { auth, db } from '../../src/config/firebase';
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, getDoc, setDoc, query, collection, where, getDocs } from 'firebase/firestore'; // Tambah import Firestore
 import { useRouter } from 'expo-router';
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore'; // Tambah import Firestore
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { auth, db } from '../../src/config/firebase';
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
@@ -17,6 +17,19 @@ export default function ProfileScreen() {
   const [role, setRole] = useState<'pengguna' | 'penjual'>('pengguna');
   const [myStores, setMyStores] = useState<any[]>([]);
   const router = useRouter();
+
+  // New State for Name and Anti-Spam
+  const [name, setName] = useState('');
+  const [spamAnswer, setSpamAnswer] = useState('');
+  const [spamChallenge, setSpamChallenge] = useState({ q: '', a: 0 });
+
+  // Generate Challenge
+  const generateSpamChallenge = () => {
+    const num1 = Math.floor(Math.random() * 10) + 1;
+    const num2 = Math.floor(Math.random() * 10) + 1;
+    setSpamChallenge({ q: `${num1} + ${num2}`, a: num1 + num2 });
+    setSpamAnswer('');
+  };
 
   // Monitor Status Login
   useEffect(() => {
@@ -54,16 +67,38 @@ export default function ProfileScreen() {
     }
   }, [user, userData]);
 
+  // Generate challenge when register mode is active
+  useEffect(() => {
+    if (isRegister) {
+      generateSpamChallenge();
+    }
+  }, [isRegister]);
+
   const handleAuth = async () => {
     try {
       if (isRegister) {
+        // Validate Name
+        if (!name.trim()) {
+          alert("Nama lengkap harus diisi!");
+          return;
+        }
+        // Validate Math Challenge
+        if (parseInt(spamAnswer) !== spamChallenge.a) {
+          alert("Jawaban keamanan salah! Coba lagi.");
+          generateSpamChallenge();
+          return;
+        }
+
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await setDoc(doc(db, "users", userCredential.user.uid), {
+          name: name,
           email: email,
           role: role,
           createdAt: new Date()
         });
         alert(`Berhasil daftar sebagai ${role}`);
+        setName('');
+        setSpamAnswer('');
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -78,12 +113,14 @@ export default function ProfileScreen() {
     return (
       <ScrollView contentContainerStyle={styles.containerCenter}>
         <View style={styles.profileCard}>
-          <Ionicons 
-            name={userData?.role === 'penjual' ? "storefront" : "person-circle"} 
-            size={100} 
-            color="#f4511e" 
+          <Ionicons
+            name={userData?.role === 'penjual' ? "storefront" : "person-circle"}
+            size={100}
+            color="#f4511e"
           />
-          <Text style={styles.welcomeText}>Halo, {userData?.role === 'penjual' ? 'Mitra Penjual' : 'Sobat Jajan'}</Text>
+          <Text style={styles.welcomeText}>
+            Halo, {userData?.name || (userData?.role === 'penjual' ? 'Mitra Penjual' : 'Sobat Jajan')}
+          </Text>
           <Text style={styles.emailText}>{user.email}</Text>
 
           <View style={styles.divider} />
@@ -93,8 +130,8 @@ export default function ProfileScreen() {
               <Text style={{ fontWeight: 'bold', marginBottom: 10, fontSize: 16 }}>Dagangan Saya:</Text>
               {myStores.length > 0 ? (
                 myStores.map((item) => (
-                  <TouchableOpacity 
-                    key={item.id} 
+                  <TouchableOpacity
+                    key={item.id}
                     style={styles.storeListItem}
                     onPress={() => router.push(`/manage-store?id=${item.id}`)}
                   >
@@ -132,46 +169,69 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{isRegister ? 'Daftar Akun' : 'Masuk JajanKuy'}</Text>
-      <TextInput 
-        style={styles.input} 
-        placeholder="Email" 
-        value={email} 
-        onChangeText={setEmail} 
+
+      {isRegister && (
+        <TextInput
+          style={styles.input}
+          placeholder="Nama Lengkap"
+          value={name}
+          onChangeText={setName}
+        />
+      )}
+
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
         autoCapitalize="none"
       />
       <View style={styles.passwordContainer}>
-        <TextInput 
-          style={styles.passwordInput} 
-          placeholder="Password" 
-          value={password} 
-          onChangeText={setPassword} 
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
           secureTextEntry={!showPassword}
         />
         <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
           <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color="#999" />
         </TouchableOpacity>
       </View>
-      
+
       {isRegister && (
-        <View style={styles.roleContainer}>
-          <Text style={styles.roleLabel}>Daftar Sebagai:</Text>
-          <View style={styles.roleRow}>
-            <TouchableOpacity 
-              style={[styles.roleBox, role === 'pengguna' && styles.roleBoxActive]} 
-              onPress={() => setRole('pengguna')}
-            >
-              <Ionicons name="people" size={20} color={role === 'pengguna' ? '#fff' : '#666'} />
-              <Text style={[styles.roleText, role === 'pengguna' && styles.roleTextActive]}>Pengguna</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.roleBox, role === 'penjual' && styles.roleBoxActive]} 
-              onPress={() => setRole('penjual')}
-            >
-              <Ionicons name="storefront" size={20} color={role === 'penjual' ? '#fff' : '#666'} />
-              <Text style={[styles.roleText, role === 'penjual' && styles.roleTextActive]}>Penjual</Text>
-            </TouchableOpacity>
+        <>
+          <View style={styles.roleContainer}>
+            <Text style={styles.roleLabel}>Daftar Sebagai:</Text>
+            <View style={styles.roleRow}>
+              <TouchableOpacity
+                style={[styles.roleBox, role === 'pengguna' && styles.roleBoxActive]}
+                onPress={() => setRole('pengguna')}
+              >
+                <Ionicons name="people" size={20} color={role === 'pengguna' ? '#fff' : '#666'} />
+                <Text style={[styles.roleText, role === 'pengguna' && styles.roleTextActive]}>Pengguna</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.roleBox, role === 'penjual' && styles.roleBoxActive]}
+                onPress={() => setRole('penjual')}
+              >
+                <Ionicons name="storefront" size={20} color={role === 'penjual' ? '#fff' : '#666'} />
+                <Text style={[styles.roleText, role === 'penjual' && styles.roleTextActive]}>Penjual</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+
+          <View style={{ marginBottom: 20 }}>
+            <Text style={styles.roleLabel}>Keamanan: {spamChallenge.q} = ?</Text>
+            <TextInput
+              style={[styles.input, { marginBottom: 0 }]}
+              placeholder="Jawaban Angka"
+              value={spamAnswer}
+              onChangeText={setSpamAnswer}
+              keyboardType="numeric"
+            />
+          </View>
+        </>
       )}
 
       <TouchableOpacity style={styles.btnLogin} onPress={handleAuth}>

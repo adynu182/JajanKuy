@@ -27,6 +27,7 @@ export default function DetailJajanan() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [userReview, setUserReview] = useState<any>(null); // State untuk review user saat ini
   const [isFavorite, setIsFavorite] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
 
@@ -44,12 +45,40 @@ export default function DetailJajanan() {
       const reviewData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })) as any[];
       setReviews(reviewData);
+
+      // Cek apakah user sudah pernah review
+      if (auth.currentUser) {
+        const myReview = reviewData.find((r: any) => r.userId === auth.currentUser?.uid);
+
+        setUserReview((prev: any) => {
+          // Prevent unnecessary updates if data hasn't changed
+          if (prev && myReview &&
+            prev.id === myReview.id &&
+            prev.rating === myReview.rating &&
+            prev.comment === myReview.comment &&
+            prev.updatedAt?.seconds === myReview.updatedAt?.seconds) {
+            return prev;
+          }
+          return myReview || null;
+        });
+      }
     });
 
     return () => unsubscribe();
   }, [id]);
+
+  // Sync form dengan userReview saat data dimuat
+  useEffect(() => {
+    if (userReview) {
+      setRating(userReview.rating);
+      setComment(userReview.comment);
+    } else {
+      setRating(0);
+      setComment('');
+    }
+  }, [userReview]);
 
   useEffect(() => {
     const fetchVendor = async () => {
@@ -111,36 +140,124 @@ export default function DetailJajanan() {
 
     setSubmitting(true);
     try {
-      // 1. Tambah ke koleksi reviews
-      await addDoc(collection(db, "reviews"), {
-        vendorId: id,
-        userId: auth.currentUser.uid,
-        userName: auth.currentUser.email?.split('@')[0],
-        rating,
-        comment,
-        createdAt: serverTimestamp(),
-      });
-
-      // 2. Hitung Rata-rata Rating baru
       const vendorRef = doc(db, "vendors", id as string);
-      const currentRating = vendor?.rating || 0;
-      const currentCount = vendor?.reviewCount || 0;
-      const newCount = currentCount + 1;
-      const newRating = ((currentRating * currentCount) + rating) / newCount;
 
-      await updateDoc(vendorRef, {
-        rating: Number(newRating.toFixed(1)),
-        reviewCount: newCount
-      });
+      // Ambil data vendor terbaru untuk perhitungan akurat
+      const vendorSnap = await getDoc(vendorRef);
+      if (!vendorSnap.exists()) throw new Error("Vendor not found");
+      const vendorData = vendorSnap.data();
 
-      Alert.alert("Sukses", "Ulasan berhasil dikirim!");
-      setRating(0);
-      setComment('');
+      // Ambil nama user terbaru dari Firestore
+      const userDocRef = doc(db, "users", auth.currentUser.uid);
+      const userSnap = await getDoc(userDocRef);
+      const currentUserName = userSnap.exists() ? userSnap.data().name : (auth.currentUser.displayName || 'Anonim');
+
+      const currentRating = vendorData.rating || 0;
+      const currentCount = vendorData.reviewCount || 0;
+
+      if (userReview) {
+        // --- MODE EDIT ---
+        const reviewRef = doc(db, "reviews", userReview.id);
+
+        await updateDoc(reviewRef, {
+          rating,
+          comment,
+          userName: currentUserName, // Update nama juga saat edit
+          updatedAt: serverTimestamp(),
+        });
+
+        // Hitung ulang rating rata-rata
+        // Rumus: (TotalRatingLama - RatingLamaUser + RatingBaruUser) / JumlahReview
+        const oldTotal = currentRating * currentCount;
+        const newTotal = oldTotal - userReview.rating + rating;
+        const newRating = newTotal / currentCount;
+
+        await updateDoc(vendorRef, {
+          rating: Number(newRating.toFixed(1))
+        });
+
+        Alert.alert("Sukses", "Ulasan berhasil diperbarui!");
+
+      } else {
+        // --- MODE ADD ---
+        await addDoc(collection(db, "reviews"), {
+          vendorId: id,
+          userId: auth.currentUser.uid,
+          userName: currentUserName,
+          rating,
+          comment,
+          createdAt: serverTimestamp(),
+        });
+
+        // Hitung Rata-rata Rating baru
+        const newCount = currentCount + 1;
+        const newRating = ((currentRating * currentCount) + rating) / newCount;
+
+        await updateDoc(vendorRef, {
+          rating: Number(newRating.toFixed(1)),
+          reviewCount: newCount
+        });
+
+        Alert.alert("Sukses", "Ulasan berhasil dikirim!");
+        // Reset form handled by userReview effect
+      }
     } catch (e) {
+      console.error(e);
       Alert.alert("Error", "Gagal mengirim ulasan.");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleDeleteReview = () => {
+    Alert.alert("Hapus Ulasan", "Apakah Anda yakin ingin menghapus ulasan ini?", [
+      { text: "Batal", style: "cancel" },
+      {
+        text: "Hapus", style: "destructive", onPress: async () => {
+          setSubmitting(true);
+          try {
+            const vendorRef = doc(db, "vendors", id as string);
+
+            // Ambil data vendor terbaru
+            const vendorSnap = await getDoc(vendorRef);
+            if (!vendorSnap.exists()) throw new Error("Vendor not found");
+            const vendorData = vendorSnap.data();
+
+            const currentRating = vendorData.rating || 0;
+            const currentCount = vendorData.reviewCount || 0;
+
+            // Hapus dokumen review
+            await deleteDoc(doc(db, "reviews", userReview.id));
+
+            // Update statistik vendor
+            const newCount = currentCount - 1;
+            let newRating = 0;
+
+            if (newCount > 0) {
+              const oldTotal = currentRating * currentCount;
+              const newTotal = oldTotal - userReview.rating;
+              newRating = newTotal / newCount;
+            }
+
+            await updateDoc(vendorRef, {
+              rating: Number(newRating.toFixed(1)),
+              reviewCount: newCount
+            });
+
+            Alert.alert("Dihapus", "Ulasan berhasil dihapus.");
+            // State userReview akan null otomatis via onSnapshot
+            setRating(0);
+            setComment('');
+
+          } catch (e) {
+            console.error(e);
+            Alert.alert("Error", "Gagal menghapus ulasan.");
+          } finally {
+            setSubmitting(false);
+          }
+        }
+      }
+    ]);
   };
 
   if (loading) return <ActivityIndicator size="large" style={{ flex: 1 }} />;
@@ -190,7 +307,9 @@ export default function DetailJajanan() {
 
 
       <View style={styles.reviewSection}>
-        <Text style={styles.sectionTitle}>Berikan Ulasan Anda</Text>
+        <Text style={styles.sectionTitle}>
+          {userReview ? "Edit Ulasan Anda" : "Berikan Ulasan Anda"}
+        </Text>
 
 
         <View style={styles.starsRow}>
@@ -217,17 +336,35 @@ export default function DetailJajanan() {
           multiline
         />
 
-        <TouchableOpacity
-          style={[styles.btnSubmit, submitting && { backgroundColor: '#ccc' }]}
-          onPress={submitReview}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.btnText}>KIRIM ULASAN</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {userReview && (
+            <TouchableOpacity
+              style={[styles.btnSubmit, { backgroundColor: '#d9534f', flex: 1, marginTop: 20 }]}
+              onPress={handleDeleteReview}
+              disabled={submitting}
+            >
+              <Text style={styles.btnText}>HAPUS</Text>
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.btnSubmit,
+              submitting && { backgroundColor: '#ccc' },
+              userReview && { flex: 1 }
+            ]}
+            onPress={submitReview}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.btnText}>
+                {userReview ? "UPDATE ULASAN" : "KIRIM ULASAN"}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
 
@@ -235,9 +372,12 @@ export default function DetailJajanan() {
         <Text style={styles.sectionTitle}>Ulasan Pengguna ({reviews?.length ?? 0})</Text>
         {reviews.length > 0 ? (
           reviews.map((rev) => (
-            <View key={rev.id} style={styles.reviewCard}>
+            <View key={rev.id} style={[styles.reviewCard, rev.id === userReview?.id && { backgroundColor: '#f0f8ff' }]}>
               <View style={styles.reviewHeader}>
-                <Text style={styles.reviewerName}>{rev.userName || 'Anonim'}</Text>
+                <Text style={styles.reviewerName}>
+                  {rev.userName || 'Anonim'}
+                  {rev.id === userReview?.id ? " (Anda)" : ""}
+                </Text>
                 <View style={styles.starsSmall}>
                   {[1, 2, 3, 4, 5].map((s) => (
                     <Ionicons
@@ -254,6 +394,7 @@ export default function DetailJajanan() {
                 {rev.createdAt && rev.createdAt.toDate
                   ? rev.createdAt.toDate().toLocaleDateString('id-ID')
                   : ''}
+                {rev.updatedAt ? ' (diedit)' : ''}
               </Text>
             </View>
           ))
