@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "jajankuy-app",
-    "slug": "jajankuy-app",
+    "name": "JajanKuy",
+    "slug": "jajankuy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "jajankuyapp",
+    "scheme": "jajankuy",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.jajankuy.app"
     },
     "web": {
       "output": "static",
@@ -30,12 +31,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#f48c25",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#f48c25"
           }
         }
       ]
@@ -43,6 +44,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d2b0e802-4135-46ad-a12a-99eca407fb93"
+      }
     }
   }
 }

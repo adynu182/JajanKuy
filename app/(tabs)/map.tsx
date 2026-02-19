@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   // CAROUSEL
   carouselContainer: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 22,
     left: 0,
     right: 0,
     zIndex: 10,
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   card: {
-    width: 230,
+    width: 320,
     backgroundColor: 'white',
     borderRadius: 20,
     shadowColor: '#000',
