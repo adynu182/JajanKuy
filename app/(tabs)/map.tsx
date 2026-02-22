@@ -22,7 +22,7 @@ export default function MapScreen() {
   const router = useRouter();
   const [vendors, setVendors] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<any>(null);
-  const [radius, setRadius] = useState(5); // Default radius 5km
+  const [radius, setRadius] = useState(5);
   const [loading, setLoading] = useState(true);
   const [isMapReady, setIsMapReady] = useState(false);
   const mapRef = useRef<MapView>(null);
@@ -114,18 +114,20 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      {/* MAP BACKGROUND */}
+      {/* MAP BACKGROUND - OpenStreetMap via UrlTile */}
       <MapView
         ref={mapRef}
         style={styles.map}
         provider={PROVIDER_DEFAULT}
         initialRegion={userLocation}
         showsUserLocation={true}
-        showsMyLocationButton={false} // Custom button used below
+        showsMyLocationButton={false}
       >
+        {/* OpenStreetMap Tile Layer */}
         <UrlTile
-          urlTemplate="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           maximumZ={19}
+          flipY={false}
         />
 
         {filteredVendors.map((vendor, index) => (
@@ -134,6 +136,8 @@ export default function MapScreen() {
             coordinate={{ latitude: vendor.lat, longitude: vendor.lng }}
             tracksViewChanges={!isMapReady}
             onPress={() => onMarkerPress(vendor, index)}
+            title={vendor.name}
+            description={`${vendor.distanceKm} km away`}
           >
             <View style={styles.customMarker}>
               <View style={styles.markerInner}>

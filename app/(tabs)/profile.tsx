@@ -32,6 +32,32 @@ export default function ProfileScreen() {
     setSpamAnswer('');
   };
 
+  // Mask WhatsApp Number - Show only last 3 digits
+  const maskWhatsapp = (wa: string) => {
+    if (!wa || wa.length <= 3) return wa;
+    const lastThree = wa.slice(-3);
+    const asterisks = '*'.repeat(wa.length - 3);
+    return asterisks + lastThree;
+  };
+
+  // Mask Email - Show first letter, last letter before @, and domain
+  const maskEmail = (email: string) => {
+    if (!email) return email;
+    const [localPart, domain] = email.split('@');
+    if (!localPart || !domain) return email;
+    
+    if (localPart.length <= 2) {
+      return localPart + '@' + domain;
+    }
+    
+    const firstChar = localPart[0];
+    const lastChar = localPart[localPart.length - 1];
+    const maskedLength = localPart.length - 2;
+    const masked = firstChar + '*'.repeat(maskedLength) + lastChar;
+    
+    return masked + '@' + domain;
+  };
+
   // Monitor Status Login
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -124,9 +150,9 @@ export default function ProfileScreen() {
           <Text style={styles.welcomeText}>
             Halo, {userData?.name || (userData?.role === 'penjual' ? 'Mitra Penjual' : 'Sobat Jajan')}
           </Text>
-          <Text style={styles.emailText}>{user.email}</Text>
+          <Text style={styles.emailText}>{maskEmail(user.email)}</Text>
           {userData?.whatsapp ? (
-            <Text style={styles.emailText}>WA: +{userData.whatsapp}</Text>
+            <Text style={styles.emailText}>WA: +{maskWhatsapp(userData.whatsapp)}</Text>
           ) : null}
 
           <View style={styles.divider} />

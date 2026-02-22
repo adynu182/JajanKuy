@@ -36,6 +36,8 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [searchSectionOffset, setSearchSectionOffset] = useState(200);
   const router = useRouter();
 
   // Fungsi menghitung jarak (Hasil dalam KM)
@@ -153,50 +155,12 @@ export default function HomeScreen() {
     }
   };
 
-  if (loading) return (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color={COLORS.primary} />
-    </View>
-  );
+  const handleScroll = (event: any) => {
+    setScrollPosition(event.nativeEvent.contentOffset.y);
+  };
 
-
-
-  return (
-
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-
-      {/* HERO TITLE */}
-      <View style={styles.heroTitleContainer}>
-        <Text style={styles.heroTitleMain}>Cari jajanan</Text>
-        <Text style={styles.heroTitleSub}>lezat disekelilingmu</Text>
-      </View>
-
-
-
-      {/* CATEGORIES */}
-      <View style={styles.sectionHeader}>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryList}>
-        {CATEGORIES.map((cat) => {
-          const isActive = selectedCategory === cat.name;
-          return (
-            <TouchableOpacity key={cat.id} style={styles.categoryItem} onPress={() => handleCategoryPress(cat.name)}>
-              <View style={[
-                styles.categoryIcon,
-                {
-                  backgroundColor: isActive ? COLORS.primary : cat.color,
-                  borderWidth: isActive ? 2 : 0,
-                  borderColor: 'red'
-                }
-              ]}>
-                <FontAwesome5 name={cat.icon as any} size={24} color={isActive ? 'white' : COLORS.primary} />
-              </View>
-              <Text style={[styles.categoryLabel, isActive && { color: COLORS.primary, fontWeight: 'bold' }]}>{cat.name}</Text>
-            </TouchableOpacity>
-          )
-        })}
-      </ScrollView>
-
+  const renderSearchAndFilters = () => (
+    <>
       {/* SEARCH BOX */}
       <View style={styles.searchContainer}>
         <View style={styles.searchWrapper}>
@@ -229,7 +193,7 @@ export default function HomeScreen() {
               style={[
                 styles.filterChip,
                 isActive && styles.filterChipActive,
-                isFavorite && { borderColor: '#ef4444' } // Red border for heart
+                isFavorite && { borderColor: '#ef4444' }
               ]}
               onPress={() => handleFilterPress(opt)}
             >
@@ -244,43 +208,101 @@ export default function HomeScreen() {
           )
         })}
       </View>
+    </>
+  );
 
-      {/* NEARBY LIST */}
-      <View style={[styles.sectionHeader, { marginTop: 10 }]}>
-        <Text style={styles.sectionTitle}>List Jajanan</Text>
-        <TouchableOpacity>
-          <Ionicons name="options-outline" size={20} color={COLORS.textGray} />
-        </TouchableOpacity>
-      </View>
+  if (loading) return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={COLORS.primary} />
+    </View>
+  );
 
-      <View style={styles.nearbyList}>
-        {filteredVendors.map((item) => (
-          <TouchableOpacity key={item.id} style={styles.nearbyCard} onPress={() => router.push(`/detail/${item.id}`)}>
-            <Image source={{ uri: item.photoUrl }} style={styles.nearbyImage} />
-            <View style={styles.nearbyInfo}>
-              <Text style={styles.nearbyName}>{item.name}</Text>
-              <Text style={styles.nearbyDesc}>
-                {item.price ? `Mulai Rp ${item.price.toLocaleString()}` : 'Harga belum tersedia'}
-              </Text>
 
-              <View style={styles.nearbyMetaRow}>
-                <Ionicons name="star" size={14} color="#f59e0b" />
-                <Text style={styles.nearbyRating}>{item.rating || 4.5}</Text>
-                <Ionicons name="location-sharp" size={14} color="#9ca3af" style={{ marginLeft: 8 }} />
-                <Text style={styles.nearbyDistance}>{item.distance?.toFixed(1)} km</Text>
-              </View>
-            </View>
-            <View style={styles.nearbyAction}>
-              <View style={styles.arrowButton}>
-                <Ionicons name="arrow-forward" size={18} color={COLORS.primary} />
-              </View>
-            </View>
+
+  return (
+    <View style={{flex: 1}}>
+      {/* STICKY SEARCH AND FILTERS - Shows when scrolled past */}
+      {scrollPosition > searchSectionOffset && (
+        <View style={styles.stickyHeader}>
+          {renderSearchAndFilters()}
+        </View>
+      )}
+
+      {/* SCROLLABLE CONTENT */}
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: 100 }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
+        {/* HERO TITLE */}
+        <View style={styles.heroTitleContainer}>
+          <Text style={styles.heroTitleMain}>Cari jajanan</Text>
+          <Text style={styles.heroTitleSub}>lezat disekelilingmu</Text>
+        </View>
+
+        {/* CATEGORIES */}
+        <View style={styles.sectionHeader}>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryList}>
+          {CATEGORIES.map((cat) => {
+            const isActive = selectedCategory === cat.name;
+            return (
+              <TouchableOpacity key={cat.id} style={styles.categoryItem} onPress={() => handleCategoryPress(cat.name)}>
+                <View style={[
+                  styles.categoryIcon,
+                  {
+                    backgroundColor: isActive ? COLORS.primary : cat.color,
+                    borderWidth: isActive ? 2 : 0,
+                    borderColor: 'red'
+                  }
+                ]}>
+                  <FontAwesome5 name={cat.icon as any} size={24} color={isActive ? 'white' : COLORS.primary} />
+                </View>
+                <Text style={[styles.categoryLabel, isActive && { color: COLORS.primary, fontWeight: 'bold' }]}>{cat.name}</Text>
+              </TouchableOpacity>
+            )
+          })}
+        </ScrollView>
+
+        {/* SEARCH BOX AND FILTERS - Regular position in scroll */}
+        {renderSearchAndFilters()}
+
+        {/* NEARBY LIST */}
+        <View style={[styles.sectionHeader, { marginTop: 10 }]}>
+          <Text style={styles.sectionTitle}>List Jajanan</Text>
+          <TouchableOpacity>
+            <Ionicons name="options-outline" size={20} color={COLORS.textGray} />
           </TouchableOpacity>
-        ))}
-      </View>
+        </View>
 
-    </ScrollView>
+        <View style={styles.nearbyList}>
+          {filteredVendors.map((item) => (
+            <TouchableOpacity key={item.id} style={styles.nearbyCard} onPress={() => router.push(`/detail/${item.id}`)}>
+              <Image source={{ uri: item.photoUrl }} style={styles.nearbyImage} />
+              <View style={styles.nearbyInfo}>
+                <Text style={styles.nearbyName}>{item.name}</Text>
+                <Text style={styles.nearbyDesc}>
+                  {item.price ? `Mulai Rp ${item.price.toLocaleString()}` : 'Harga belum tersedia'}
+                </Text>
 
+                <View style={styles.nearbyMetaRow}>
+                  <Ionicons name="star" size={14} color="#f59e0b" />
+                  <Text style={styles.nearbyRating}>{item.rating || 4.5}</Text>
+                  <Ionicons name="location-sharp" size={14} color="#9ca3af" style={{ marginLeft: 8 }} />
+                  <Text style={styles.nearbyDistance}>{item.distance?.toFixed(1)} km</Text>
+                </View>
+              </View>
+              <View style={styles.nearbyAction}>
+                <View style={styles.arrowButton}>
+                  <Ionicons name="arrow-forward" size={18} color={COLORS.primary} />
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -288,7 +310,15 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
 
-  // Header
+  // Sticky Header
+  stickyHeader: {
+    backgroundColor: COLORS.background,
+    paddingTop: 16,
+    paddingBottom: 8,
+    zIndex: 100,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
   // header: {
   //   flexDirection: 'row',
   //   justifyContent: 'space-between',
@@ -342,7 +372,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 20,
     marginBottom: 5,
-    marginTop: 20,
+    marginTop: 5,
   },
   searchWrapper: {
     flexDirection: 'row',
