@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, getDocs, onSnapshot } from 'firebase/firestore'; // Make sure existing imports are preserved/merged
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { auth, db } from '../../src/config/firebase';
 
 const COLORS = {
@@ -221,87 +221,77 @@ export default function HomeScreen() {
 
   return (
     <View style={{flex: 1}}>
-      {/* STICKY SEARCH AND FILTERS - Shows when scrolled past */}
-      {scrollPosition > searchSectionOffset && (
-        <View style={styles.stickyHeader}>
-          {renderSearchAndFilters()}
-        </View>
-      )}
-
-      {/* SCROLLABLE CONTENT */}
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
+      <SectionList
+        sections={[{ title: 'List Jajanan', data: filteredVendors }]}
+        keyExtractor={(item: any) => item.id}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-      >
-        {/* HERO TITLE */}
-        <View style={styles.heroTitleContainer}>
-          <Text style={styles.heroTitleMain}>Cari jajanan</Text>
-          <Text style={styles.heroTitleSub}>lezat disekelilingmu</Text>
-        </View>
+        ListHeaderComponent={() => (
+          <>
+            <View style={styles.heroTitleContainer}>
+              <Text style={styles.heroTitleMain}>Cari jajanan</Text>
+              <Text style={styles.heroTitleSub}>lezat disekelilingmu</Text>
+            </View>
 
-        {/* CATEGORIES */}
-        <View style={styles.sectionHeader}>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryList}>
-          {CATEGORIES.map((cat) => {
-            const isActive = selectedCategory === cat.name;
-            return (
-              <TouchableOpacity key={cat.id} style={styles.categoryItem} onPress={() => handleCategoryPress(cat.name)}>
-                <View style={[
-                  styles.categoryIcon,
-                  {
-                    backgroundColor: isActive ? COLORS.primary : cat.color,
-                    borderWidth: isActive ? 2 : 0,
-                    borderColor: 'red'
-                  }
-                ]}>
-                  <FontAwesome5 name={cat.icon as any} size={24} color={isActive ? 'white' : COLORS.primary} />
-                </View>
-                <Text style={[styles.categoryLabel, isActive && { color: COLORS.primary, fontWeight: 'bold' }]}>{cat.name}</Text>
-              </TouchableOpacity>
-            )
-          })}
-        </ScrollView>
+            <View style={styles.sectionHeader}>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryList}>
+              {CATEGORIES.map((cat) => {
+                const isActive = selectedCategory === cat.name;
+                return (
+                  <TouchableOpacity key={cat.id} style={styles.categoryItem} onPress={() => handleCategoryPress(cat.name)}>
+                    <View style={[
+                      styles.categoryIcon,
+                      {
+                        backgroundColor: isActive ? COLORS.primary : cat.color,
+                        borderWidth: isActive ? 2 : 0,
+                        borderColor: 'red'
+                      }
+                    ]}>
+                      <FontAwesome5 name={cat.icon as any} size={24} color={isActive ? 'white' : COLORS.primary} />
+                    </View>
+                    <Text style={[styles.categoryLabel, isActive && { color: COLORS.primary, fontWeight: 'bold' }]}>{cat.name}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </ScrollView>
+          </>
+        )}
+        stickySectionHeadersEnabled={true}
+        renderSectionHeader={() => (
+          <View>
+            <View style={styles.stickyHeader}>
+              {renderSearchAndFilters()}
+            </View>
+            <View style={[styles.sectionHeader, { marginTop: 10 }]}> 
+              
+            </View>
+          </View>
+        )}
+        renderItem={({ item }) => (
+          <TouchableOpacity key={item.id} style={styles.nearbyCard} onPress={() => router.push(`/detail/${item.id}`)}>
+            <Image source={{ uri: item.photoUrl }} style={styles.nearbyImage} />
+            <View style={styles.nearbyInfo}>
+              <Text style={styles.nearbyName}>{item.name}</Text>
+              <Text style={styles.nearbyDesc}>
+                {item.price ? `Mulai Rp ${item.price.toLocaleString()}` : 'Harga belum tersedia'}
+              </Text>
 
-        {/* SEARCH BOX AND FILTERS - Regular position in scroll */}
-        {renderSearchAndFilters()}
-
-        {/* NEARBY LIST */}
-        <View style={[styles.sectionHeader, { marginTop: 10 }]}>
-          <Text style={styles.sectionTitle}>List Jajanan</Text>
-          <TouchableOpacity>
-            <Ionicons name="options-outline" size={20} color={COLORS.textGray} />
+              <View style={styles.nearbyMetaRow}>
+                <Ionicons name="star" size={14} color="#f59e0b" />
+                <Text style={styles.nearbyRating}>{item.rating || 4.5}</Text>
+                <Ionicons name="location-sharp" size={14} color="#9ca3af" style={{ marginLeft: 8 }} />
+                <Text style={styles.nearbyDistance}>{item.distance?.toFixed(1)} km</Text>
+              </View>
+            </View>
+            <View style={styles.nearbyAction}>
+              <View style={styles.arrowButton}>
+                <Ionicons name="arrow-forward" size={18} color={COLORS.primary} />
+              </View>
+            </View>
           </TouchableOpacity>
-        </View>
-
-        <View style={styles.nearbyList}>
-          {filteredVendors.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.nearbyCard} onPress={() => router.push(`/detail/${item.id}`)}>
-              <Image source={{ uri: item.photoUrl }} style={styles.nearbyImage} />
-              <View style={styles.nearbyInfo}>
-                <Text style={styles.nearbyName}>{item.name}</Text>
-                <Text style={styles.nearbyDesc}>
-                  {item.price ? `Mulai Rp ${item.price.toLocaleString()}` : 'Harga belum tersedia'}
-                </Text>
-
-                <View style={styles.nearbyMetaRow}>
-                  <Ionicons name="star" size={14} color="#f59e0b" />
-                  <Text style={styles.nearbyRating}>{item.rating || 4.5}</Text>
-                  <Ionicons name="location-sharp" size={14} color="#9ca3af" style={{ marginLeft: 8 }} />
-                  <Text style={styles.nearbyDistance}>{item.distance?.toFixed(1)} km</Text>
-                </View>
-              </View>
-              <View style={styles.nearbyAction}>
-                <View style={styles.arrowButton}>
-                  <Ionicons name="arrow-forward" size={18} color={COLORS.primary} />
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
+        )}
+      />
     </View>
   );
 }
