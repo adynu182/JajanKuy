@@ -36,8 +36,9 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [user, setUser] = useState<any>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const [searchSectionOffset, setSearchSectionOffset] = useState(200);
+  // NOTE: scrollPosition used previously for animated sticky header; no longer needed
+  // const [scrollPosition, setScrollPosition] = useState(0);
+  // const [searchSectionOffset, setSearchSectionOffset] = useState(200);
   const router = useRouter();
 
   // Fungsi menghitung jarak (Hasil dalam KM)
@@ -155,9 +156,10 @@ export default function HomeScreen() {
     }
   };
 
-  const handleScroll = (event: any) => {
-    setScrollPosition(event.nativeEvent.contentOffset.y);
-  };
+  // scrolling not used for static header any more
+  // const handleScroll = (event: any) => {
+  //   setScrollPosition(event.nativeEvent.contentOffset.y);
+  // };
 
   const renderSearchAndFilters = () => (
     <>
@@ -221,17 +223,19 @@ export default function HomeScreen() {
 
   return (
     <View style={{flex: 1}}>
+      {/* search and filter bar lives outside of the scrollable list now, so it stays fixed with no built-in
+          sticky-header animation. */}
+      <View style={styles.stickyHeader}>
+        {renderSearchAndFilters()}
+      </View>
+
       <SectionList
         sections={[{ title: 'List Jajanan', data: filteredVendors }]}
         keyExtractor={(item: any) => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 100, paddingTop: 0 }}
         ListHeaderComponent={() => (
           <>
-            <View style={styles.heroTitleContainer}>
-              <Text style={styles.heroTitleMain}>Cari jajanan</Text>
-              <Text style={styles.heroTitleSub}>lezat disekelilingmu</Text>
-            </View>
 
             <View style={styles.sectionHeader}>
             </View>
@@ -257,17 +261,9 @@ export default function HomeScreen() {
             </ScrollView>
           </>
         )}
-        stickySectionHeadersEnabled={true}
-        renderSectionHeader={() => (
-          <View>
-            <View style={styles.stickyHeader}>
-              {renderSearchAndFilters()}
-            </View>
-            <View style={[styles.sectionHeader, { marginTop: 10 }]}> 
-              
-            </View>
-          </View>
-        )}
+        // disable sticky headers since search/filter is handled separately
+        stickySectionHeadersEnabled={false}
+        // we no longer render the header inside the list
         renderItem={({ item }) => (
           <TouchableOpacity key={item.id} style={styles.nearbyCard} onPress={() => router.push(`/detail/${item.id}`)}>
             <Image source={{ uri: item.photoUrl }} style={styles.nearbyImage} />
@@ -423,6 +419,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#0f172a',
+    marginBottom: 10,
   },
 
   // Nearby List
