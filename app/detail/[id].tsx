@@ -464,13 +464,13 @@ const styles = StyleSheet.create({
   },
   btnSubmit: {
     backgroundColor: '#f4511e',
-    padding: 18,
+    padding: 10,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 20
   },
-  btnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  listReviewSection: { padding: 20, backgroundColor: '#fff', marginTop: 10 },
+  btnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  listReviewSection: { padding: 15, backgroundColor: '#fff', marginTop: 10 },
   reviewCard: {
     paddingVertical: 15,
     borderBottomWidth: 1,

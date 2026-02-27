@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "jajankuy",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -18,7 +17,6 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.jajankuy.app"
     },
@@ -34,9 +32,9 @@
           "image": "./assets/images/icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#f48c25",
+          "backgroundColor": "#fcf4e6",
           "dark": {
-            "backgroundColor": "#f48c25"
+            "backgroundColor": "#fcf4e6"
           }
         }
       ]
