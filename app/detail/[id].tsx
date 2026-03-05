@@ -2,15 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator, Alert, Image, Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
 import { auth, db } from '../../src/config/firebase';
 
 const COLORS = {
@@ -351,7 +344,7 @@ export default function DetailJajanan() {
             >
               <Ionicons
                 name={num <= rating ? "star" : "star-outline"}
-                size={35}
+                size={30}
                 color="#f1c40f"
               />
             </TouchableOpacity>
@@ -390,7 +383,7 @@ export default function DetailJajanan() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.btnText}>
-                {userReview ? "UPDATE ULASAN" : "KIRIM ULASAN"}
+                {userReview ? "Update Ulasan" : "Kirim Ulasan"}
               </Text>
             )}
           </TouchableOpacity>
