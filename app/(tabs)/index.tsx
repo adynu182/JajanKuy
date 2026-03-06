@@ -2,9 +2,11 @@ import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, getDocs, onSnapshot } from 'firebase/firestore'; // Make sure existing imports are preserved/merged
+import { collection, getDocs, onSnapshot } from 'firebase/firestore';
+// Make sure existing imports are preserved/merged
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
 import { auth, db } from '../../src/config/firebase';
 
 const COLORS = {
@@ -36,9 +38,6 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [user, setUser] = useState<any>(null);
-  // NOTE: scrollPosition used previously for animated sticky header; no longer needed
-  // const [scrollPosition, setScrollPosition] = useState(0);
-  // const [searchSectionOffset, setSearchSectionOffset] = useState(200);
   const router = useRouter();
 
   // Fungsi menghitung jarak (Hasil dalam KM)
@@ -220,15 +219,8 @@ export default function HomeScreen() {
   );
 
 
-
   return (
     <View style={{flex: 1}}>
-      {/* search and filter bar lives outside of the scrollable list now, so it stays fixed with no built-in
-          sticky-header animation. */}
-      <View style={styles.stickyHeader}>
-        {renderSearchAndFilters()}
-      </View>
-
       <SectionList
         sections={[{ title: 'List Jajanan', data: filteredVendors }]}
         keyExtractor={(item: any) => item.id}
@@ -236,7 +228,7 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 100, paddingTop: 0 }}
         ListHeaderComponent={() => (
           <>
-
+            {renderSearchAndFilters()}
             <View style={styles.sectionHeader}>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryList}>
@@ -263,7 +255,6 @@ export default function HomeScreen() {
         )}
         // disable sticky headers since search/filter is handled separately
         stickySectionHeadersEnabled={false}
-        // we no longer render the header inside the list
         renderItem={({ item }) => (
           <TouchableOpacity key={item.id} style={styles.nearbyCard} onPress={() => router.push(`/detail/${item.id}`)}>
             <Image source={{ uri: item.photoUrl }} style={styles.nearbyImage} />

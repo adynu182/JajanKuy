@@ -3,6 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { auth, db } from '../../src/config/firebase';
 
@@ -12,6 +13,7 @@ const COLORS = {
 
 export default function DetailJajanan() {
   const { id } = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   const [vendor, setVendor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -425,7 +427,7 @@ export default function DetailJajanan() {
           <Text style={styles.emptyReview}>Belum ada ulasan. Jadi yang pertama!</Text>
         )}
       </View>
-      <View style={{ height: 130 }} />
+      <View style={{ height: 130 + insets.bottom }} />
     </ScrollView>
   );
 }

@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore'; // Tambah import Firestore
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
+// Tambah import Firestore
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
 import { auth, db } from '../../src/config/firebase';
 
 export default function ProfileScreen() {
@@ -132,7 +134,24 @@ export default function ProfileScreen() {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (error: any) {
-      alert(error.message);
+      // Handle login/registration errors
+      let errorMessage = "Terjadi kesalahan. Silakan coba lagi.";
+
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        errorMessage = "Email atau password yang Anda masukkan salah.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Format email tidak valid.";
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = "Akun ini telah dinonaktifkan.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Terlalu banyak percobaan login. Coba lagi nanti.";
+      } else if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "Email ini sudah terdaftar.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "Password harus minimal 6 karakter.";
+      }
+
+      alert(errorMessage);
     }
   };
 

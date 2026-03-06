@@ -2,30 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc, getDoc,
-  serverTimestamp,
-  updateDoc
-} from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text, TextInput,
-  TouchableOpacity,
-  View
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { auth, db } from '../src/config/firebase';
 
 export default function ManageStore() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(!!id);
@@ -196,7 +183,7 @@ export default function ManageStore() {
   if (fetching) return <ActivityIndicator size="large" color="#f4511e" style={styles.centered} />;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
@@ -230,7 +217,7 @@ export default function ManageStore() {
 
       <Text style={styles.label}>Catatan (Opsional)</Text>
       <TextInput
-        style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+        style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
         value={notes}
         onChangeText={setNotes}
         placeholder="Contoh: Buka setiap sore, terima pesanan, dll."
@@ -267,6 +254,9 @@ export default function ManageStore() {
           <Text style={styles.btnDeleteText}>Hapus Dagangan</Text>
         </TouchableOpacity>
       )}
+      <TouchableOpacity style={{ alignItems: 'center', marginBottom: 80 }} >
+        
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -278,10 +268,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: 'bold' },
   label: { fontSize: 14, fontWeight: 'bold', marginTop: 15, color: '#666' },
   input: { borderBottomWidth: 1, borderBottomColor: '#ddd', paddingVertical: 8, fontSize: 16 },
-  cameraBox: { width: '100%', height: 250, backgroundColor: '#f9f9f9', borderRadius: 15, marginTop: 10, borderStyle: 'dashed', borderWidth: 2, borderColor: '#f4511e', overflow: 'hidden' },
+  cameraBox: { width: '100%', height: 250, backgroundColor: '#fafafa', borderRadius: 15, marginTop: 10, borderStyle: 'dashed', borderWidth: 2, borderColor: '#f4511e', overflow: 'hidden' },
   full: { width: '100%', height: '100%' },
-  placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  placeholderText: { color: '#f4511e', marginTop: 10, fontWeight: 'bold' },
+  placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' },
+  placeholderText: { color: '#f4511e', marginTop: 10, fontWeight: 'bold', fontSize: 14 },
   badge: { position: 'absolute', bottom: 10, right: 10, backgroundColor: '#2ecc71', flexDirection: 'row', padding: 6, borderRadius: 20, alignItems: 'center', gap: 4 },
   badgeText: { color: 'white', fontSize: 12, fontWeight: 'bold' },
   btn: { padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 30 },
