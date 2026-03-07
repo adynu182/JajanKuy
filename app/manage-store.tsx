@@ -83,8 +83,8 @@ export default function ManageStore() {
       const { manipulateAsync, SaveFormat } = require('expo-image-manipulator');
       const manipulated = await manipulateAsync(
         result.assets[0].uri,
-        [{ resize: { width: 800 } }],
-        { compress: 0.7, format: SaveFormat.JPEG }
+        [{ resize: { width: 800, height: 600 } }],
+        { compress: 0.5, format: SaveFormat.JPEG }
       );
       setImage(manipulated.uri);
       try {
@@ -116,7 +116,12 @@ export default function ManageStore() {
         body: data,
       });
       const resData = await res.json();
-      return resData.secure_url;
+      // Apply 4:3 aspect ratio transformation to the URL
+      const transformedUrl = resData.secure_url.replace(
+        `/upload/`,
+        `/upload/c_fill,ar_4:3/`
+      );
+      return transformedUrl;
     } catch (e) {
       return null;
     }

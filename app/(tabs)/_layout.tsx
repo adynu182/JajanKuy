@@ -27,7 +27,7 @@ export default function TabLayout() {
             <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16, gap: 8 }}>
               <View style={{ backgroundColor: COLORS.primary }}>
                 <Image
-                  source={require('../../assets/images/homeicon.webp')}
+                  source={require('../../assets/images/homeicon.png')}
                   style={{ width: 48, height: 48 }}
                   resizeMode="contain"
                 />
