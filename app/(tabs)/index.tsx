@@ -261,7 +261,7 @@ export default function HomeScreen() {
           </>
         }
         // disable sticky headers since search/filter is handled separately
-        stickySectionHeadersEnabled={false}
+
         renderItem={({ item }) => (
           <TouchableOpacity key={item.id} style={styles.nearbyCard} onPress={() => router.push(`/detail/${item.id}`)}>
             <Image source={{ uri: item.photoUrl }} style={styles.nearbyImage} />
@@ -293,45 +293,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
-
-  // Sticky Header
-  stickyHeader: {
-    backgroundColor: COLORS.background,
-    paddingTop: 16,
-    paddingBottom: 8,
-    zIndex: 100,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  // header: {
-  //   flexDirection: 'row',
-  //   justifyContent: 'space-between',
-  //   alignItems: 'center',
-  //   paddingHorizontal: 20,
-  //   paddingVertical: 10,
-  // },
-  // logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  // logoIconBg: {
-  //   backgroundColor: COLORS.primary,
-  //   padding: 6,
-  //   borderRadius: 12,
-  // },
-  // logoText: {
-  //   fontSize: 20,
-  //   fontWeight: '800', // Extra bold
-  //   color: COLORS.primary,
-  //   letterSpacing: 0.5,
-  // },
-  // mapBtn: {
-  //   backgroundColor: COLORS.white,
-  //   padding: 10,
-  //   borderRadius: 50,
-  //   shadowColor: '#000',
-  //   shadowOpacity: 0.05,
-  //   shadowOffset: { width: 0, height: 2 },
-  //   shadowRadius: 5,
-  //   elevation: 2,
-  // },
 
   // Hero Title
   heroTitleContainer: {
