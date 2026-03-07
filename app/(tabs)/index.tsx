@@ -162,7 +162,7 @@ export default function HomeScreen() {
 
   const renderSearchAndFilters = () => (
     <>
-      {/* SEARCH BOX */}
+      {/* SEARCH BOX + FAVORITE BUTTON */}
       <View style={styles.searchContainer}>
         <View style={styles.searchWrapper}>
           <Ionicons name="search" size={20} color={COLORS.textGray} style={{ marginRight: 8 }} />
@@ -179,14 +179,26 @@ export default function HomeScreen() {
             </TouchableOpacity>
           )}
         </View>
+        <TouchableOpacity
+          style={[
+            styles.favButton,
+            showFavoritesOnly && styles.favButtonActive,
+          ]}
+          onPress={() => handleFilterPress('favorite')}
+        >
+          <Ionicons
+            name={showFavoritesOnly ? "heart" : "heart-outline"}
+            size={22}
+            color={showFavoritesOnly ? "#fff" : "#ef4444"}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* FILTERS */}
       <View style={styles.filterContainer}>
-        {['closest', 'cheapest', 'expensive', 'favorite'].map((opt) => {
+        {['closest', 'cheapest', 'expensive'].map((opt) => {
           const labels: Record<string, string> = { closest: 'Terdekat', cheapest: 'Termurah', expensive: 'Termahal' };
-          const isFavorite = opt === 'favorite';
-          const isActive = isFavorite ? showFavoritesOnly : sortOption === opt;
+          const isActive = sortOption === opt;
 
           return (
             <TouchableOpacity
@@ -194,17 +206,12 @@ export default function HomeScreen() {
               style={[
                 styles.filterChip,
                 isActive && styles.filterChipActive,
-                isFavorite && { borderColor: '#ef4444' }
               ]}
               onPress={() => handleFilterPress(opt)}
             >
-              {isFavorite ? (
-                <Ionicons name={isActive ? "heart" : "heart-outline"} size={20} color={isActive ? "white" : "#ef4444"} />
-              ) : (
-                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                  {labels[opt]}
-                </Text>
-              )}
+              <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+                {labels[opt]}
+              </Text>
             </TouchableOpacity>
           )
         })}
@@ -220,13 +227,13 @@ export default function HomeScreen() {
 
 
   return (
-    <View style={{flex: 1}}>
+    <View style={{ flex: 1 }}>
       <SectionList
         sections={[{ title: 'List Jajanan', data: filteredVendors }]}
         keyExtractor={(item: any) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100, paddingTop: 0 }}
-        ListHeaderComponent={() => (
+        ListHeaderComponent={
           <>
             {renderSearchAndFilters()}
             <View style={styles.sectionHeader}>
@@ -252,7 +259,7 @@ export default function HomeScreen() {
               })}
             </ScrollView>
           </>
-        )}
+        }
         // disable sticky headers since search/filter is handled separately
         stickySectionHeadersEnabled={false}
         renderItem={({ item }) => (
@@ -347,11 +354,15 @@ const styles = StyleSheet.create({
 
   // Search Box
   searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
     marginBottom: 5,
     marginTop: 5,
+    gap: 10,
   },
   searchWrapper: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.white,
@@ -370,6 +381,25 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: COLORS.textDark,
+  },
+  favButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  favButtonActive: {
+    backgroundColor: '#ef4444',
+    borderColor: '#ef4444',
   },
 
   // Categories

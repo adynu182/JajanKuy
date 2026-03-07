@@ -25,7 +25,7 @@ export default function TabLayout() {
           headerTitle: "", // Hide default title
           headerLeft: () => (
             <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16, gap: 8 }}>
-              <View style={{ backgroundColor: COLORS.primary }}>
+              <View style={{ backgroundColor: 'transparent' }}>
                 <Image
                   source={require('../../assets/images/homeicon.png')}
                   style={{ width: 48, height: 48 }}

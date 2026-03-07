@@ -254,8 +254,8 @@ export default function ManageStore() {
           <Text style={styles.btnDeleteText}>Hapus Dagangan</Text>
         </TouchableOpacity>
       )}
-      <TouchableOpacity style={{ alignItems: 'center', marginBottom: 80 }} >
-        
+      <TouchableOpacity style={{ alignItems: 'center', marginBottom: 300 }} >
+
       </TouchableOpacity>
     </ScrollView>
   );

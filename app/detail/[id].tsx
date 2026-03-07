@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { GestureHandlerRootView, PanGestureHandler, PinchGestureHandler, State } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { auth, db } from '../../src/config/firebase';
@@ -10,6 +12,113 @@ import { auth, db } from '../../src/config/firebase';
 const COLORS = {
   primary: "#f48c25",
 };
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Zoomable Image Viewer Component with Pan support
+function ZoomableImageViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+  const lastTap = useRef(0);
+  const pinchRef = useRef(null);
+  const panRef = useRef(null);
+
+  const onPinchEvent = useCallback((event: any) => {
+    scale.value = Math.min(Math.max(savedScale.value * event.nativeEvent.scale, 1), 5);
+  }, []);
+
+  const onPinchStateChange = useCallback((event: any) => {
+    if (event.nativeEvent.oldState === State.ACTIVE) {
+      savedScale.value = scale.value;
+      if (scale.value < 1.05) {
+        scale.value = withTiming(1);
+        savedScale.value = 1;
+        translateX.value = withTiming(0);
+        translateY.value = withTiming(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      }
+    }
+  }, []);
+
+  const onPanEvent = useCallback((event: any) => {
+    if (scale.value > 1) {
+      translateX.value = savedTranslateX.value + event.nativeEvent.translationX;
+      translateY.value = savedTranslateY.value + event.nativeEvent.translationY;
+    }
+  }, []);
+
+  const onPanStateChange = useCallback((event: any) => {
+    if (event.nativeEvent.oldState === State.ACTIVE) {
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    }
+  }, []);
+
+  const handleDoubleTap = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      // Double tap — reset zoom and position
+      scale.value = withTiming(1);
+      savedScale.value = 1;
+      translateX.value = withTiming(0);
+      translateY.value = withTiming(0);
+      savedTranslateX.value = 0;
+      savedTranslateY.value = 0;
+    }
+    lastTap.current = now;
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  return (
+    <GestureHandlerRootView style={styles.modalOverlay}>
+      <PanGestureHandler
+        ref={panRef}
+        onGestureEvent={onPanEvent}
+        onHandlerStateChange={onPanStateChange}
+        simultaneousHandlers={pinchRef}
+        minPointers={1}
+        maxPointers={2}
+      >
+        <Animated.View style={{ flex: 1 }}>
+          <PinchGestureHandler
+            ref={pinchRef}
+            onGestureEvent={onPinchEvent}
+            onHandlerStateChange={onPinchStateChange}
+            simultaneousHandlers={panRef}
+          >
+            <Animated.View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <TouchableOpacity activeOpacity={1} onPress={handleDoubleTap} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Animated.Image
+                  source={{ uri }}
+                  style={[styles.modalImage, animatedStyle]}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            </Animated.View>
+          </PinchGestureHandler>
+        </Animated.View>
+      </PanGestureHandler>
+      <TouchableOpacity
+        style={styles.modalCloseBtn}
+        onPress={onClose}
+      >
+        <Ionicons name="close-circle" size={36} color="#fff" />
+      </TouchableOpacity>
+    </GestureHandlerRootView>
+  );
+}
 
 export default function DetailJajanan() {
   const { id } = useLocalSearchParams();
@@ -26,6 +135,7 @@ export default function DetailJajanan() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
   const [ownerWhatsapp, setOwnerWhatsapp] = useState('');
+  const [imageModalVisible, setImageModalVisible] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -286,8 +396,24 @@ export default function DetailJajanan() {
     <ScrollView style={styles.container}>
 
       {vendor?.photoUrl ? (
-        <Image source={{ uri: vendor.photoUrl }} style={styles.image} />
+        <TouchableOpacity activeOpacity={0.9} onPress={() => setImageModalVisible(true)}>
+          <Image source={{ uri: vendor.photoUrl }} style={styles.image} />
+        </TouchableOpacity>
       ) : null}
+
+      {/* Full Screen Image Modal with Pinch-to-Zoom */}
+      <Modal
+        visible={imageModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setImageModalVisible(false)}
+      >
+        <StatusBar backgroundColor="#000" barStyle="light-content" />
+        <ZoomableImageViewer
+          uri={vendor?.photoUrl}
+          onClose={() => setImageModalVisible(false)}
+        />
+      </Modal>
       <View style={styles.infoBox}>
         <Text style={styles.title}>{vendor?.name}</Text>
         <Text style={styles.category}>{vendor?.category}</Text>
@@ -301,16 +427,12 @@ export default function DetailJajanan() {
         ) : null}
 
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.btnAction} onPress={openMap}>
-            <Ionicons name="location" size={20} color="#fff" />
-            <Text style={styles.btnActionText}>Map</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity style={[styles.btnAction, styles.btnWa]} onPress={openWhatsApp}>
             <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-            <Text style={styles.btnActionText}>WA</Text>
           </TouchableOpacity>
-
+          <TouchableOpacity style={styles.btnAction} onPress={openMap}>
+            <Ionicons name="paper-plane" size={20} color="#fff" />
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.btnAction, styles.btnFav, isFavorite && styles.btnFavActive]}
             onPress={toggleFavorite}
@@ -321,9 +443,6 @@ export default function DetailJajanan() {
             ) : (
               <>
                 <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={20} color={isFavorite ? "#fff" : COLORS.primary} />
-                <Text style={[styles.btnActionText, { color: isFavorite ? "#fff" : COLORS.primary }]}>
-                  {isFavorite ? "Disimpan" : "Simpan"}
-                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -435,6 +554,22 @@ export default function DetailJajanan() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9f9f9' },
   image: { width: '100%', height: 250 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+  },
+  modalCloseBtn: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+  },
   infoBox: { padding: 20, backgroundColor: '#fff' },
   title: { fontSize: 24, fontWeight: 'bold' },
   category: { fontSize: 16, color: '#666', marginTop: 5 },
