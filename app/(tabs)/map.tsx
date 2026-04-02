@@ -1,9 +1,9 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { collection, endAt, getDocs, orderBy, query, startAt } from 'firebase/firestore';
+import { geohashQueryBounds } from 'geofire-common';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps';
 import { db } from '../../src/config/firebase';
@@ -22,7 +22,6 @@ export default function MapScreen() {
   const router = useRouter();
   const [vendors, setVendors] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<any>(null);
-  const [radius, setRadius] = useState(5);
   const [loading, setLoading] = useState(true);
   const [isMapReady, setIsMapReady] = useState(false);
   const mapRef = useRef<MapView>(null);
@@ -46,28 +45,15 @@ export default function MapScreen() {
       setIsMapReady(true);
     }, 2000);
     return () => clearTimeout(timer);
-  }, [radius, vendors]);
-
-  const filteredVendors = useMemo(() => {
-    if (!userLocation) return vendors;
-    return vendors.filter(v => {
-      const distance = getDistance(
-        userLocation.latitude,
-        userLocation.longitude,
-        v.lat,
-        v.lng
-      );
-      // Attach calculated distance for display
-      v.distanceKm = distance.toFixed(1);
-      return distance <= radius;
-    });
-  }, [vendors, radius, userLocation]);
+  }, [vendors]);
 
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
+      let location = null;
       if (status === 'granted') {
         let loc = await Location.getCurrentPositionAsync({});
+        location = loc;
         setUserLocation({
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
@@ -76,13 +62,41 @@ export default function MapScreen() {
         });
       }
 
-      const unsubscribe = onSnapshot(collection(db, "vendors"), (snapshot) => {
-        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setVendors(list);
-        setLoading(false);
-      });
+      if (location) {
+        const center: [number, number] = [location.coords.latitude, location.coords.longitude];
+        const radiusInM = 5000; // 5km fixed radius
+        const bounds = geohashQueryBounds(center, radiusInM);
+        const promises = [];
+        for (const b of bounds) {
+          const q = query(
+            collection(db, 'vendors'),
+            orderBy('geohash'),
+            startAt(b[0]),
+            endAt(b[1])
+          );
+          promises.push(getDocs(q));
+        }
 
-      return () => unsubscribe();
+        const snapshots = await Promise.all(promises);
+        let list: any[] = [];
+        for (const snap of snapshots) {
+          for (const doc of snap.docs) {
+            const data = doc.data();
+            const distance = getDistance(
+              location.coords.latitude,
+              location.coords.longitude,
+              data.lat,
+              data.lng
+            );
+            if (distance <= 5) {
+              list.push({ id: doc.id, ...data, distanceKm: distance.toFixed(1) });
+            }
+          }
+        }
+        list = Array.from(new Map(list.map(item => [item.id, item])).values());
+        setVendors(list);
+      }
+      setLoading(false);
     })();
   }, []);
 
@@ -130,7 +144,7 @@ export default function MapScreen() {
           flipY={false}
         />
 
-        {filteredVendors.map((vendor, index) => (
+        {vendors.map((vendor, index) => (
           <Marker
             key={vendor.id}
             coordinate={{ latitude: vendor.lat, longitude: vendor.lng }}
@@ -148,30 +162,12 @@ export default function MapScreen() {
         ))}
       </MapView>
 
-      {/* FLOATING TOP RADIUS SLIDER */}
+      {/* FLOATING TOP BAR */}
       <View style={styles.topBarContainer}>
-        <View style={styles.radiusContainer}>
+        <View style={styles.backButtonContainer}>
           <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={COLORS.textDark} />
           </TouchableOpacity>
-
-          <View style={styles.sliderWrapper}>
-            <View style={styles.radiusLabelRow}>
-              <Text style={styles.radiusLabel}>Radius Pencarian</Text>
-              <Text style={styles.radiusValue}>{radius} km</Text>
-            </View>
-            <Slider
-              style={{ width: '100%', height: 40 }}
-              minimumValue={1}
-              maximumValue={10}
-              step={1}
-              value={radius}
-              onValueChange={setRadius}
-              minimumTrackTintColor={COLORS.primary}
-              maximumTrackTintColor="#d1d5db"
-              thumbTintColor={COLORS.primary}
-            />
-          </View>
         </View>
       </View>
 
@@ -192,7 +188,7 @@ export default function MapScreen() {
           decelerationRate="fast"
           snapToInterval={336} // card width + margin
         >
-          {filteredVendors.map((vendor) => (
+          {vendors.map((vendor) => (
             <TouchableOpacity
               key={vendor.id}
               activeOpacity={0.9}
@@ -224,7 +220,7 @@ export default function MapScreen() {
 
             </TouchableOpacity>
           ))}
-          {filteredVendors.length === 0 && (
+          {vendors.length === 0 && (
             <View style={[styles.card, { justifyContent: 'center', alignItems: 'center', width: 320 }]}>
               <Text style={{ color: '#999' }}>No vendors found nearby</Text>
             </View>
@@ -249,12 +245,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 10,
   },
-  radiusContainer: {
+  backButtonContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 24,
-    padding: 12,
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -262,7 +260,6 @@ const styles = StyleSheet.create({
     elevation: 5,
     marginTop: 12,
     marginBottom: 12,
-    gap: 12,
   },
   iconButton: {
     width: 40,
@@ -271,26 +268,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: COLORS.backgroundLight,
     borderRadius: 20,
-  },
-  sliderWrapper: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  radiusLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: -4,
-    paddingHorizontal: 4,
-  },
-  radiusLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '600',
-  },
-  radiusValue: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: '700',
   },
 
   // MARKERS

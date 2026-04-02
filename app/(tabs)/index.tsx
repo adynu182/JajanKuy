@@ -2,7 +2,8 @@ import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, endAt, getDocs, limit, onSnapshot, orderBy, query, startAt } from 'firebase/firestore';
+import { geohashQueryBounds } from 'geofire-common';
 // Make sure existing imports are preserved/merged
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -38,6 +39,7 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [visibleCount, setVisibleCount] = useState(5);
   const router = useRouter();
 
   // Fungsi menghitung jarak (Hasil dalam KM)
@@ -83,21 +85,48 @@ export default function HomeScreen() {
         setUserLocation(location.coords);
       }
 
-      const querySnapshot = await getDocs(collection(db, "vendors"));
-      let list = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        let distance = 0;
-        if (location) {
-          distance = calculateDistance(
-            location.coords.latitude,
-            location.coords.longitude,
-            data.lat,
-            data.lng
+      let list: any[] = [];
+      if (location) {
+        const center: [number, number] = [location.coords.latitude, location.coords.longitude];
+        const radiusInM = 5000;
+        const bounds = geohashQueryBounds(center, radiusInM);
+        const promises = [];
+        for (const b of bounds) {
+          const q = query(
+            collection(db, 'vendors'),
+            orderBy('geohash'),
+            startAt(b[0]),
+            endAt(b[1])
           );
+          promises.push(getDocs(q));
         }
-        // Ensure price exists for sorting, default to 0 if missing
-        return { id: doc.id, ...data, distance, price: data.minPrice || data.price || 0 };
-      });
+
+        const snapshots = await Promise.all(promises);
+        for (const snap of snapshots) {
+          for (const doc of snap.docs) {
+            const data = doc.data();
+            // distance check
+            const distance = calculateDistance(
+              location.coords.latitude,
+              location.coords.longitude,
+              data.lat,
+              data.lng
+            );
+            if (distance <= 5) {
+              list.push({ id: doc.id, ...data, distance, price: data.minPrice || data.price || 0 });
+            }
+          }
+        }
+        // deduplicate bounds results
+        list = Array.from(new Map(list.map(item => [item.id, item])).values());
+      } else {
+        const q = query(collection(db, "vendors"), orderBy('createdAt', 'desc'), limit(10));
+        const querySnapshot = await getDocs(q);
+        list = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return { id: doc.id, ...data, distance: 999, price: data.minPrice || data.price || 0 };
+        });
+      }
 
       setAllVendors(list);
       setLoading(false);
@@ -137,6 +166,7 @@ export default function HomeScreen() {
     }
 
     setFilteredVendors(result);
+    setVisibleCount(5);
   }, [allVendors, sortOption, selectedCategory, searchQuery, favorites, showFavoritesOnly]);
 
   const handleCategoryPress = (categoryName: string) => {
@@ -229,7 +259,7 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1 }}>
       <SectionList
-        sections={[{ title: 'List Jajanan', data: filteredVendors }]}
+        sections={[{ title: 'List Jajanan', data: filteredVendors.slice(0, visibleCount) }]}
         keyExtractor={(item: any) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100, paddingTop: 0 }}
@@ -285,6 +315,17 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
         )}
+        ListFooterComponent={
+          filteredVendors.length > visibleCount ? (
+            <TouchableOpacity
+              style={styles.loadMoreBtn}
+              onPress={() => setVisibleCount(prev => prev + 5)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.loadMoreText}>Load More</Text>
+            </TouchableOpacity>
+          ) : null
+        }
       />
     </View>
   );
@@ -495,5 +536,19 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: 'white',
+  },
+  loadMoreBtn: {
+    backgroundColor: '#f8ddb9ff',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  loadMoreText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

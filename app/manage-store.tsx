@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { geohashForLocation } from 'geofire-common';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -136,6 +137,8 @@ export default function ManageStore() {
         if (uploadedUrl) finalUrl = uploadedUrl;
       }
 
+      const hash = geohashForLocation([location.lat, location.lng]);
+
       const payload = {
         name,
         category: selectedCategories.join(', '), // Save as "Makanan, Minuman"
@@ -143,6 +146,7 @@ export default function ManageStore() {
         notes: notes.trim(),
         lat: location.lat,
         lng: location.lng,
+        geohash: hash,
         photoUrl: finalUrl,
         updatedAt: serverTimestamp(),
       };
