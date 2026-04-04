@@ -24,7 +24,7 @@ const CATEGORIES = [
   { id: '1', name: 'Makanan', icon: 'utensils', type: 'FontAwesome5', color: '#fed7aa' },
   { id: '2', name: 'Minuman', icon: 'wine-glass-alt', type: 'FontAwesome5', color: '#bfdbfe' },
   { id: '3', name: 'Jajanan', icon: 'cookie-bite', type: 'FontAwesome5', color: '#fecaca' },
-  { id: '4', name: 'Buah', icon: 'carrot', type: 'FontAwesome5', color: '#bbf7d0' },
+  { id: '4', name: 'Buah', icon: 'apple-alt', type: 'FontAwesome5', color: '#ade6c1ff' },
   { id: '5', name: 'Es Krim', icon: 'ice-cream', type: 'FontAwesome5', color: '#f3f7a9ff' },
 ];
 
@@ -47,7 +47,7 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [user, setUser] = useState<any>(null);
-  const [visibleCount, setVisibleCount] = useState(5);
+  const [visibleCount, setVisibleCount] = useState(10);
   const router = useRouter();
 
   useEffect(() => {
@@ -186,7 +186,7 @@ export default function HomeScreen() {
     }
 
     setFilteredVendors(result);
-    setVisibleCount(5);
+    setVisibleCount(10);
   }, [allVendors, sortOption, selectedCategory, searchQuery, favorites, showFavoritesOnly]);
 
   const handleCategoryPress = (categoryName: string) => {
