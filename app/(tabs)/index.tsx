@@ -5,7 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { collection, endAt, getDocs, limit, onSnapshot, orderBy, query, startAt } from 'firebase/firestore';
 import { geohashQueryBounds } from 'geofire-common';
 // Make sure existing imports are preserved/merged
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { auth, db } from '../../src/config/firebase';
@@ -28,7 +28,15 @@ const CATEGORIES = [
   { id: '5', name: 'Es Krim', icon: 'ice-cream', type: 'FontAwesome5', color: '#f3f7a9ff' },
 ];
 
+const PROMO_IMAGES = [
+  'https://picsum.photos/seed/promo1/800/400',
+  'https://picsum.photos/seed/promo2/800/400',
+  'https://picsum.photos/seed/promo3/800/400',
+];
+
 export default function HomeScreen() {
+  const scrollRef = useRef<ScrollView>(null);
+  const activeSlideIndex = useRef(0);
   const [allVendors, setAllVendors] = useState<any[]>([]);
   const [filteredVendors, setFilteredVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +49,18 @@ export default function HomeScreen() {
   const [user, setUser] = useState<any>(null);
   const [visibleCount, setVisibleCount] = useState(5);
   const router = useRouter();
+
+  useEffect(() => {
+    const slideTimer = setInterval(() => {
+      let nextIndex = activeSlideIndex.current + 1;
+      if (nextIndex >= PROMO_IMAGES.length) {
+        nextIndex = 0;
+      }
+      activeSlideIndex.current = nextIndex;
+      scrollRef.current?.scrollTo({ x: nextIndex * 316, animated: true });
+    }, 5000);
+    return () => clearInterval(slideTimer);
+  }, []);
 
   // Fungsi menghitung jarak (Hasil dalam KM)
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -224,6 +244,26 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* PROMO SLIDES */}
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.promoContainer}
+        snapToInterval={316}
+        decelerationRate="fast"
+        onMomentumScrollEnd={(e) => {
+          const offsetX = e.nativeEvent.contentOffset.x;
+          activeSlideIndex.current = Math.round(offsetX / 316);
+        }}
+      >
+        {PROMO_IMAGES.map((img, idx) => (
+          <TouchableOpacity key={idx} activeOpacity={0.9}>
+            <Image source={{ uri: img }} style={styles.promoImage} />
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
       {/* FILTERS */}
       <View style={styles.filterContainer}>
         {['closest', 'cheapest', 'expensive'].map((opt) => {
@@ -402,6 +442,20 @@ const styles = StyleSheet.create({
   favButtonActive: {
     backgroundColor: '#ef4444',
     borderColor: '#ef4444',
+  },
+
+  // Promo Slides
+  promoContainer: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 5,
+    gap: 16,
+  },
+  promoImage: {
+    width: 300,
+    height: 150,
+    borderRadius: 16,
+    backgroundColor: '#eee',
   },
 
   // Categories
