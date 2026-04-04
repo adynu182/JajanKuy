@@ -431,7 +431,7 @@ export default function DetailJajanan() {
             <Ionicons name="logo-whatsapp" size={20} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.btnAction} onPress={openMap}>
-            <Ionicons name="paper-plane" size={20} color="#fff" />
+            <Ionicons name="location-outline" size={20} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.btnAction, styles.btnFav, isFavorite && styles.btnFavActive]}
@@ -480,14 +480,14 @@ export default function DetailJajanan() {
           multiline
         />
 
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ flexDirection: 'row', gap: 100 }}>
           {userReview && (
             <TouchableOpacity
               style={[styles.btnSubmit, { backgroundColor: '#d9534f', flex: 1, marginTop: 20 }]}
               onPress={handleDeleteReview}
               disabled={submitting}
             >
-              <Text style={styles.btnText}>HAPUS</Text>
+              <Text style={styles.btnText}>Hapus</Text>
             </TouchableOpacity>
           )}
 
@@ -642,15 +642,15 @@ const styles = StyleSheet.create({
   // Action Buttons
   actionRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 20
+    gap: 100,
+    marginTop: 20,
   },
   btnAction: {
     flex: 1,
     flexDirection: 'row',
     backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    borderRadius: 25,
+    paddingVertical: 10,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
