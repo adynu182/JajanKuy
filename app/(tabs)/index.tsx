@@ -28,11 +28,6 @@ const CATEGORIES = [
   { id: '5', name: 'Es Krim', icon: 'ice-cream', type: 'FontAwesome5', color: '#f3f7a9ff' },
 ];
 
-const PROMO_IMAGES = [
-  'https://picsum.photos/seed/promo1/800/400',
-  'https://picsum.photos/seed/promo2/800/400',
-  'https://picsum.photos/seed/promo3/800/400',
-];
 
 export default function HomeScreen() {
   const scrollRef = useRef<ScrollView>(null);
@@ -40,7 +35,7 @@ export default function HomeScreen() {
   const [allVendors, setAllVendors] = useState<any[]>([]);
   const [filteredVendors, setFilteredVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState<any>(null);
+  const [UserLocation, setUserLocation] = useState<any>(null);
   const [sortOption, setSortOption] = useState<'closest' | 'cheapest' | 'expensive'>('closest');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -48,18 +43,40 @@ export default function HomeScreen() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [user, setUser] = useState<any>(null);
   const [visibleCount, setVisibleCount] = useState(10);
+  const [promoImages, setPromoImages] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
+    if (promoImages.length === 0) return;
     const slideTimer = setInterval(() => {
       let nextIndex = activeSlideIndex.current + 1;
-      if (nextIndex >= PROMO_IMAGES.length) {
+      if (nextIndex >= promoImages.length) {
         nextIndex = 0;
       }
       activeSlideIndex.current = nextIndex;
       scrollRef.current?.scrollTo({ x: nextIndex * 316, animated: true });
     }, 5000);
     return () => clearInterval(slideTimer);
+  }, [promoImages.length]);
+
+  // Fetch Promo Images from Firestore
+  useEffect(() => {
+    const fetchPromos = async () => {
+      try {
+        const q = query(collection(db, 'promos'));
+        const qs = await getDocs(q);
+        if (!qs.empty) {
+          // Supports documents with 'imageUrl' or 'image' fields
+          const images = qs.docs.map(doc => doc.data().imageUrl || doc.data().image).filter(Boolean);
+          if (images.length > 0) {
+            setPromoImages(images);
+          }
+        }
+      } catch (e) {
+        console.log("Error fetching promos:", e);
+      }
+    };
+    fetchPromos();
   }, []);
 
   // Fungsi menghitung jarak (Hasil dalam KM)
@@ -205,11 +222,6 @@ export default function HomeScreen() {
     }
   };
 
-  // scrolling not used for static header any more
-  // const handleScroll = (event: any) => {
-  //   setScrollPosition(event.nativeEvent.contentOffset.y);
-  // };
-
   const renderSearchAndFilters = () => (
     <>
       {/* SEARCH BOX + FAVORITE BUTTON */}
@@ -257,7 +269,7 @@ export default function HomeScreen() {
           activeSlideIndex.current = Math.round(offsetX / 316);
         }}
       >
-        {PROMO_IMAGES.map((img, idx) => (
+        {promoImages.map((img, idx) => (
           <TouchableOpacity key={idx} activeOpacity={0.9}>
             <Image source={{ uri: img }} style={styles.promoImage} />
           </TouchableOpacity>
