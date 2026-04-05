@@ -36,27 +36,19 @@ export default function ProfileScreen() {
     setSpamAnswer('');
   };
 
-  // Mask WhatsApp Number - Show only last 3 digits
-  const maskWhatsapp = (wa: string) => {
-    if (!wa || wa.length <= 3) return wa;
-    const lastThree = wa.slice(-3);
-    const asterisks = '*'.repeat(wa.length - 3);
-    return asterisks + lastThree;
-  };
-
   // Mask Email - Show first letter, last letter before @, and domain
   const maskEmail = (email: string) => {
     if (!email) return email;
     const [localPart, domain] = email.split('@');
     if (!localPart || !domain) return email;
 
-    if (localPart.length <= 2) {
+    if (localPart.length <= 5) {
       return localPart + '@' + domain;
     }
 
-    const firstChar = localPart[0];
-    const lastChar = localPart[localPart.length - 1];
-    const maskedLength = localPart.length - 2;
+    const firstChar = localPart[0] + localPart[1] + localPart[2];
+    const lastChar = localPart[localPart.length - 1] + localPart[localPart.length - 2];
+    const maskedLength = 4;
     const masked = firstChar + '*'.repeat(maskedLength) + lastChar;
 
     return masked + '@' + domain;
@@ -173,7 +165,7 @@ export default function ProfileScreen() {
           </Text>
           <Text style={styles.emailText}>{maskEmail(user.email)}</Text>
           {userData?.whatsapp ? (
-            <Text style={styles.emailText}>WA: +{maskWhatsapp(userData.whatsapp)}</Text>
+            <Text style={styles.emailText}>WA: +{userData.whatsapp}</Text>
           ) : null}
 
           <View style={styles.divider} />
@@ -199,7 +191,16 @@ export default function ProfileScreen() {
                 <Text style={{ color: '#999', fontStyle: 'italic', marginBottom: 10 }}>Belum ada dagangan terdaftar.</Text>
               )}
 
-              <TouchableOpacity style={styles.btnSpecial} onPress={() => router.push('/manage-store')}>
+              <TouchableOpacity 
+                style={styles.btnSpecial} 
+                onPress={() => {
+                  if (myStores.length >= 3) {
+                    alert("Anda sudah mencapai jumlah maksimal!");
+                  } else {
+                    router.push('/manage-store');
+                  }
+                }}
+              >
                 <Ionicons name="add-circle" size={20} color="#fff" />
                 <Text style={styles.btnText}>Tambah Dagangan Baru</Text>
               </TouchableOpacity>
