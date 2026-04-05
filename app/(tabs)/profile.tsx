@@ -47,7 +47,7 @@ export default function ProfileScreen() {
     }
 
     const firstChar = localPart[0] + localPart[1] + localPart[2];
-    const lastChar = localPart[localPart.length - 1] + localPart[localPart.length - 2];
+    const lastChar = localPart[localPart.length - 2] + localPart[localPart.length - 1];
     const maskedLength = 4;
     const masked = firstChar + '*'.repeat(maskedLength) + lastChar;
 
@@ -191,10 +191,10 @@ export default function ProfileScreen() {
                 <Text style={{ color: '#999', fontStyle: 'italic', marginBottom: 10 }}>Belum ada dagangan terdaftar.</Text>
               )}
 
-              <TouchableOpacity 
-                style={styles.btnSpecial} 
+              <TouchableOpacity
+                style={styles.btnSpecial}
                 onPress={() => {
-                  if (myStores.length >= 3) {
+                  if (myStores.length >= 5) {
                     alert("Anda sudah mencapai jumlah maksimal!");
                   } else {
                     router.push('/manage-store');

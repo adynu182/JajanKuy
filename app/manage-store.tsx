@@ -26,7 +26,7 @@ export default function ManageStore() {
   const [image, setImage] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
 
-  const OPTIONS = ['Makanan', 'Minuman', 'Jajanan', 'Buah', 'Es Krim'];
+  const OPTIONS = ['Makanan', 'Minuman', 'Jajanan', 'Buah', 'Es Krim', 'Lainnya'];
 
   useEffect(() => {
     if (id) {

@@ -21,11 +21,12 @@ const COLORS = {
 };
 
 const CATEGORIES = [
-  { id: '1', name: 'Makanan', icon: 'utensils', type: 'FontAwesome5', color: '#fed7aa' },
-  { id: '2', name: 'Minuman', icon: 'wine-glass-alt', type: 'FontAwesome5', color: '#bfdbfe' },
-  { id: '3', name: 'Jajanan', icon: 'cookie-bite', type: 'FontAwesome5', color: '#fecaca' },
-  { id: '4', name: 'Buah', icon: 'apple-alt', type: 'FontAwesome5', color: '#ade6c1ff' },
-  { id: '5', name: 'Es Krim', icon: 'ice-cream', type: 'FontAwesome5', color: '#f3f7a9ff' },
+  { id: '1', name: 'Makanan', icon: 'utensils', color: '#fed7aa' },
+  { id: '2', name: 'Minuman', icon: 'wine-glass-alt', color: '#bfdbfe' },
+  { id: '3', name: 'Jajanan', icon: 'cookie-bite', color: '#fecaca' },
+  { id: '4', name: 'Buah', icon: 'apple-alt', color: '#ade6c1ff' },
+  { id: '5', name: 'Es Krim', icon: 'ice-cream', color: '#f3f7a9ff' },
+  { id: '6', name: 'Lainnya', icon: 'question', color: '#e5e7eb' },
 ];
 
 
