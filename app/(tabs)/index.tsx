@@ -105,7 +105,7 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!user) return;
 
-    const favRef = collection(db, "users", user.uid, "favorites");
+    const favRef = collection(db, "favorites");
     const unsubscribe = onSnapshot(favRef, (snapshot) => {
       const favIds = snapshot.docs.map(doc => doc.id); // doc.id is usually vendorId based on detail page logic
       setFavorites(favIds);

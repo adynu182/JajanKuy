@@ -3,7 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { GestureHandlerRootView, PanGestureHandler, PinchGestureHandler, State } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,15 +24,12 @@ function ZoomableImageViewer({ uri, onClose }: { uri: string; onClose: () => voi
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
   const lastTap = useRef(0);
-  const pinchRef = useRef(null);
-  const panRef = useRef(null);
 
-  const onPinchEvent = useCallback((event: any) => {
-    scale.value = Math.min(Math.max(savedScale.value * event.nativeEvent.scale, 1), 5);
-  }, []);
-
-  const onPinchStateChange = useCallback((event: any) => {
-    if (event.nativeEvent.oldState === State.ACTIVE) {
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      scale.value = Math.min(Math.max(savedScale.value * e.scale, 1), 5);
+    })
+    .onEnd(() => {
       savedScale.value = scale.value;
       if (scale.value < 1.05) {
         scale.value = withTiming(1);
@@ -42,22 +39,23 @@ function ZoomableImageViewer({ uri, onClose }: { uri: string; onClose: () => voi
         savedTranslateX.value = 0;
         savedTranslateY.value = 0;
       }
-    }
-  }, []);
+    });
 
-  const onPanEvent = useCallback((event: any) => {
-    if (scale.value > 1) {
-      translateX.value = savedTranslateX.value + event.nativeEvent.translationX;
-      translateY.value = savedTranslateY.value + event.nativeEvent.translationY;
-    }
-  }, []);
-
-  const onPanStateChange = useCallback((event: any) => {
-    if (event.nativeEvent.oldState === State.ACTIVE) {
+  const panGesture = Gesture.Pan()
+    .minPointers(1)
+    .maxPointers(2)
+    .onUpdate((e) => {
+      if (scale.value > 1) {
+        translateX.value = savedTranslateX.value + e.translationX;
+        translateY.value = savedTranslateY.value + e.translationY;
+      }
+    })
+    .onEnd(() => {
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
-    }
-  }, []);
+    });
+
+  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
 
   const handleDoubleTap = useCallback(() => {
     const now = Date.now();
@@ -83,33 +81,19 @@ function ZoomableImageViewer({ uri, onClose }: { uri: string; onClose: () => voi
 
   return (
     <GestureHandlerRootView style={styles.modalOverlay}>
-      <PanGestureHandler
-        ref={panRef}
-        onGestureEvent={onPanEvent}
-        onHandlerStateChange={onPanStateChange}
-        simultaneousHandlers={pinchRef}
-        minPointers={1}
-        maxPointers={2}
-      >
+      <GestureDetector gesture={composedGesture}>
         <Animated.View style={{ flex: 1 }}>
-          <PinchGestureHandler
-            ref={pinchRef}
-            onGestureEvent={onPinchEvent}
-            onHandlerStateChange={onPinchStateChange}
-            simultaneousHandlers={panRef}
-          >
-            <Animated.View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <TouchableOpacity activeOpacity={1} onPress={handleDoubleTap} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Animated.Image
-                  source={{ uri }}
-                  style={[styles.modalImage, animatedStyle]}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            </Animated.View>
-          </PinchGestureHandler>
+          <Animated.View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <TouchableOpacity activeOpacity={1} onPress={handleDoubleTap} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <Animated.Image
+                source={{ uri }}
+                style={[styles.modalImage, animatedStyle]}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </Animated.View>
         </Animated.View>
-      </PanGestureHandler>
+      </GestureDetector>
       <TouchableOpacity
         style={styles.modalCloseBtn}
         onPress={onClose}
@@ -196,7 +180,7 @@ export default function DetailJajanan() {
 
     const checkFavorite = async () => {
       if (auth.currentUser) {
-        const favRef = doc(db, "users", auth.currentUser.uid, "favorites", id as string);
+        const favRef = doc(db, "favorites", id as string);
         const snap = await getDoc(favRef);
         setIsFavorite(snap.exists());
       }
@@ -226,7 +210,7 @@ export default function DetailJajanan() {
     if (!auth.currentUser) return Alert.alert("Ups!", "Login dulu untuk menyimpan favorit.");
 
     setFavLoading(true);
-    const favRef = doc(db, "users", auth.currentUser.uid, "favorites", id as string);
+    const favRef = doc(db, "favorites", id as string);
 
     try {
       if (isFavorite) {
@@ -234,6 +218,7 @@ export default function DetailJajanan() {
         setIsFavorite(false);
       } else {
         await setDoc(favRef, {
+          userId: auth.currentUser.uid,
           vendorId: id,
           vendorName: vendor?.name || '',
           addedAt: serverTimestamp()
