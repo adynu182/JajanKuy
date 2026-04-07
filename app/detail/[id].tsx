@@ -180,7 +180,7 @@ export default function DetailJajanan() {
 
     const checkFavorite = async () => {
       if (auth.currentUser) {
-        const favRef = doc(db, "favorites", id as string);
+        const favRef = doc(db, "users", auth.currentUser.uid, "favorites", id as string);
         const snap = await getDoc(favRef);
         setIsFavorite(snap.exists());
       }
@@ -210,7 +210,7 @@ export default function DetailJajanan() {
     if (!auth.currentUser) return Alert.alert("Ups!", "Login dulu untuk menyimpan favorit.");
 
     setFavLoading(true);
-    const favRef = doc(db, "favorites", id as string);
+    const favRef = doc(db, "users", auth.currentUser.uid, "favorites", id as string);
 
     try {
       if (isFavorite) {
@@ -218,7 +218,6 @@ export default function DetailJajanan() {
         setIsFavorite(false);
       } else {
         await setDoc(favRef, {
-          userId: auth.currentUser.uid,
           vendorId: id,
           vendorName: vendor?.name || '',
           addedAt: serverTimestamp()
