@@ -1,11 +1,11 @@
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Camera, Map as MapLibre, Marker, UserLocation } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { collection, endAt, getDocs, orderBy, query, startAt } from 'firebase/firestore';
 import { geohashQueryBounds } from 'geofire-common';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps';
 import { db } from '../../src/config/firebase';
 
 const COLORS = {
@@ -18,13 +18,28 @@ const COLORS = {
   gray: "#e5e7eb",
 };
 
+const CATEGORY_ICONS: Record<string, { icon: string; color: string }> = {
+  makanan: { icon: 'utensils', color: '#fed7aa' },
+  minuman: { icon: 'wine-glass-alt', color: '#bfdbfe' },
+  jajanan: { icon: 'cookie-bite', color: '#fecaca' },
+  buah: { icon: 'apple-alt', color: '#ade6c1ff' },
+  'es krim': { icon: 'ice-cream', color: '#f3f7a9ff' },
+  lainnya: { icon: 'question', color: '#e5e7eb' },
+};
+
+const getCategoryIcon = (category: string | undefined) => {
+  const lowerCategory = category?.toLowerCase() ?? '';
+  const match = Object.entries(CATEGORY_ICONS).find(([key]) => lowerCategory.includes(key));
+  return match ? match[1] : CATEGORY_ICONS.lainnya;
+};
+
 export default function MapScreen() {
   const router = useRouter();
   const [vendors, setVendors] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isMapReady, setIsMapReady] = useState(false);
-  const mapRef = useRef<MapView>(null);
+  const cameraRef = useRef<any>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // 1. Fungsi Hitung Jarak (Haversine Formula)
@@ -93,20 +108,19 @@ export default function MapScreen() {
             }
           }
         }
-        list = Array.from(new Map(list.map(item => [item.id, item])).values());
-        setVendors(list);
+        const uniqueVendors = Array.from(new Map(list.map(item => [item.id, item])).values());
+        setVendors(uniqueVendors);
       }
       setLoading(false);
     })();
   }, []);
 
   const handleRecenter = () => {
-    if (userLocation && mapRef.current) {
-      mapRef.current.animateToRegion({
-        ...userLocation,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 1000);
+    if (userLocation && cameraRef.current) {
+      cameraRef.current.flyTo({
+        center: [userLocation.longitude, userLocation.latitude],
+        zoom: 14,
+      });
     }
   };
 
@@ -128,39 +142,45 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      {/* MAP BACKGROUND - OpenStreetMap via UrlTile */}
-      <MapView
-        ref={mapRef}
+      {/* MAP BACKGROUND - maplibre via Carto Voyager style */}
+      <MapLibre
         style={styles.map}
-        provider={PROVIDER_DEFAULT}
-        initialRegion={userLocation}
-        showsUserLocation={true}
-        showsMyLocationButton={false}
+        mapStyle={'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json'}
       >
-        {/* OpenStreetMap Tile Layer */}
-        <UrlTile
-          urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maximumZ={19}
-          flipY={false}
+        <Camera
+          ref={cameraRef}
+          initialViewState={
+            userLocation
+              ? {
+                  center: [userLocation.longitude, userLocation.latitude],
+                  zoom: 14,
+                }
+              : undefined
+          }
         />
+
+        <UserLocation animated={true} />
 
         {vendors.map((vendor, index) => (
           <Marker
             key={vendor.id}
-            coordinate={{ latitude: vendor.lat, longitude: vendor.lng }}
-            tracksViewChanges={!isMapReady}
+            id={vendor.id}
+            lngLat={[vendor.lng, vendor.lat]}
             onPress={() => onMarkerPress(vendor, index)}
-            title={vendor.name}
-            description={`${vendor.distanceKm} km away`}
           >
-            <View style={styles.customMarker}>
-              <View style={styles.markerInner}>
-                <MaterialIcons name="local-dining" size={20} color={COLORS.primary} />
-              </View>
-            </View>
+            {(() => {
+              const categoryIcon = getCategoryIcon(vendor.category);
+              return (
+                <View style={styles.customMarker}>
+                  <View style={[styles.markerInner, { backgroundColor: categoryIcon.color }]}> 
+                    <FontAwesome5 name={categoryIcon.icon} size={18} color={COLORS.primary} />
+                  </View>
+                </View>
+              );
+            })()}
           </Marker>
         ))}
-      </MapView>
+      </MapLibre>
 
       {/* FLOATING TOP BAR */}
       <View style={styles.topBarContainer}>
