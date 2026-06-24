@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { runOnUI, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { auth, db } from '../../src/config/firebase';
@@ -57,16 +57,22 @@ function ZoomableImageViewer({ uri, onClose }: { uri: string; onClose: () => voi
 
   const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
 
+  // BUG-05 FIX: Modifikasi shared value Reanimated harus dilakukan di dalam worklet
+  // (UI thread). Menggunakan runOnUI() agar assignment scale.value, translateX.value,
+  // dst. dieksekusi di UI thread — wajib untuk Reanimated v4.
   const handleDoubleTap = useCallback(() => {
     const now = Date.now();
     if (now - lastTap.current < 300) {
       // Double tap — reset zoom and position
-      scale.value = withTiming(1);
-      savedScale.value = 1;
-      translateX.value = withTiming(0);
-      translateY.value = withTiming(0);
-      savedTranslateX.value = 0;
-      savedTranslateY.value = 0;
+      runOnUI(() => {
+        'worklet';
+        scale.value = withTiming(1);
+        savedScale.value = 1;
+        translateX.value = withTiming(0);
+        translateY.value = withTiming(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      })();
     }
     lastTap.current = now;
   }, []);
@@ -256,60 +262,72 @@ export default function DetailJajanan() {
     try {
       const vendorRef = doc(db, "vendors", id as string);
 
-      // Ambil data vendor terbaru untuk perhitungan akurat
-      const vendorSnap = await getDoc(vendorRef);
-      if (!vendorSnap.exists()) throw new Error("Vendor not found");
-      const vendorData = vendorSnap.data();
-
-      // Ambil nama user terbaru dari Firestore
+      // Ambil nama user terbaru dari Firestore (di luar transaksi karena read-only)
       const userDocRef = doc(db, "users", auth.currentUser.uid);
       const userSnap = await getDoc(userDocRef);
       const currentUserName = userSnap.exists() ? userSnap.data().name : (auth.currentUser.displayName || 'Anonim');
 
-      const currentRating = vendorData.rating || 0;
-      const currentCount = vendorData.reviewCount || 0;
-
       if (userReview) {
         // --- MODE EDIT ---
+        // BUG-03 FIX: Gunakan runTransaction agar kalkulasi rating atomik.
+        // Tanpa transaksi, dua user yang submit bersamaan bisa menghasilkan
+        // race condition yang merusak nilai rating secara permanen.
         const reviewRef = doc(db, "reviews", userReview.id);
+        const oldRating = userReview.rating;
 
-        await updateDoc(reviewRef, {
-          rating,
-          comment,
-          userName: currentUserName, // Update nama juga saat edit
-          updatedAt: serverTimestamp(),
-        });
+        await runTransaction(db, async (transaction) => {
+          const vendorSnap = await transaction.get(vendorRef);
+          if (!vendorSnap.exists()) throw new Error("Vendor not found");
+          const vendorData = vendorSnap.data();
 
-        // Hitung ulang rating rata-rata
-        // Rumus: (TotalRatingLama - RatingLamaUser + RatingBaruUser) / JumlahReview
-        const oldTotal = currentRating * currentCount;
-        const newTotal = oldTotal - userReview.rating + rating;
-        const newRating = newTotal / currentCount;
+          const currentRating = vendorData.rating || 0;
+          const currentCount = vendorData.reviewCount || 0;
 
-        await updateDoc(vendorRef, {
-          rating: Number(newRating.toFixed(1))
+          // Rumus: (TotalRatingLama - RatingLamaUser + RatingBaruUser) / JumlahReview
+          const oldTotal = currentRating * currentCount;
+          const newTotal = oldTotal - oldRating + rating;
+          const newRating = currentCount > 0 ? newTotal / currentCount : rating;
+
+          transaction.update(reviewRef, {
+            rating,
+            comment,
+            userName: currentUserName,
+            updatedAt: serverTimestamp(),
+          });
+          transaction.update(vendorRef, {
+            rating: Number(newRating.toFixed(1)),
+          });
         });
 
         Alert.alert("Sukses", "Ulasan berhasil diperbarui!");
 
       } else {
         // --- MODE ADD ---
-        await addDoc(collection(db, "reviews"), {
-          vendorId: id,
-          userId: auth.currentUser.uid,
-          userName: currentUserName,
-          rating,
-          comment,
-          createdAt: serverTimestamp(),
-        });
+        // BUG-03 FIX: Gunakan runTransaction agar kalkulasi rating atomik.
+        await runTransaction(db, async (transaction) => {
+          const vendorSnap = await transaction.get(vendorRef);
+          if (!vendorSnap.exists()) throw new Error("Vendor not found");
+          const vendorData = vendorSnap.data();
 
-        // Hitung Rata-rata Rating baru
-        const newCount = currentCount + 1;
-        const newRating = ((currentRating * currentCount) + rating) / newCount;
+          const currentRating = vendorData.rating || 0;
+          const currentCount = vendorData.reviewCount || 0;
+          const newCount = currentCount + 1;
+          const newRating = ((currentRating * currentCount) + rating) / newCount;
 
-        await updateDoc(vendorRef, {
-          rating: Number(newRating.toFixed(1)),
-          reviewCount: newCount
+          // addDoc tidak bisa dipakai di dalam transaksi — gunakan doc() + set()
+          const newReviewRef = doc(collection(db, "reviews"));
+          transaction.set(newReviewRef, {
+            vendorId: id,
+            userId: auth.currentUser!.uid,
+            userName: currentUserName,
+            rating,
+            comment,
+            createdAt: serverTimestamp(),
+          });
+          transaction.update(vendorRef, {
+            rating: Number(newRating.toFixed(1)),
+            reviewCount: newCount,
+          });
         });
 
         Alert.alert("Sukses", "Ulasan berhasil dikirim!");
@@ -331,31 +349,32 @@ export default function DetailJajanan() {
           setSubmitting(true);
           try {
             const vendorRef = doc(db, "vendors", id as string);
+            const reviewRef = doc(db, "reviews", userReview.id);
+            const deletedRating = userReview.rating;
 
-            // Ambil data vendor terbaru
-            const vendorSnap = await getDoc(vendorRef);
-            if (!vendorSnap.exists()) throw new Error("Vendor not found");
-            const vendorData = vendorSnap.data();
+            // BUG-03 FIX: Gunakan runTransaction agar penghapusan review dan
+            // update statistik vendor terjadi secara atomik.
+            await runTransaction(db, async (transaction) => {
+              const vendorSnap = await transaction.get(vendorRef);
+              if (!vendorSnap.exists()) throw new Error("Vendor not found");
+              const vendorData = vendorSnap.data();
 
-            const currentRating = vendorData.rating || 0;
-            const currentCount = vendorData.reviewCount || 0;
+              const currentRating = vendorData.rating || 0;
+              const currentCount = vendorData.reviewCount || 0;
+              const newCount = currentCount - 1;
+              let newRating = 0;
 
-            // Hapus dokumen review
-            await deleteDoc(doc(db, "reviews", userReview.id));
+              if (newCount > 0) {
+                const oldTotal = currentRating * currentCount;
+                const newTotal = oldTotal - deletedRating;
+                newRating = newTotal / newCount;
+              }
 
-            // Update statistik vendor
-            const newCount = currentCount - 1;
-            let newRating = 0;
-
-            if (newCount > 0) {
-              const oldTotal = currentRating * currentCount;
-              const newTotal = oldTotal - userReview.rating;
-              newRating = newTotal / newCount;
-            }
-
-            await updateDoc(vendorRef, {
-              rating: Number(newRating.toFixed(1)),
-              reviewCount: newCount
+              transaction.delete(reviewRef);
+              transaction.update(vendorRef, {
+                rating: Number(newRating.toFixed(1)),
+                reviewCount: newCount,
+              });
             });
 
             Alert.alert("Dihapus", "Ulasan berhasil dihapus.");

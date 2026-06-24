@@ -4,7 +4,7 @@ import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndP
 import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
 // Tambah import Firestore
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { auth, db } from '../../src/config/firebase';
@@ -102,12 +102,14 @@ export default function ProfileScreen() {
       if (isRegister) {
         // Validate Name
         if (!name.trim()) {
-          alert("Nama lengkap harus diisi!");
+          // BUG-02 FIX: Gunakan Alert.alert() React Native, bukan alert() browser
+          Alert.alert("Validasi", "Nama lengkap harus diisi!");
           return;
         }
         // Validate Math Challenge
         if (parseInt(spamAnswer) !== spamChallenge.a) {
-          alert("Jawaban keamanan salah! Coba lagi.");
+          // BUG-02 FIX: Gunakan Alert.alert() React Native, bukan alert() browser
+          Alert.alert("Keamanan", "Jawaban keamanan salah! Coba lagi.");
           generateSpamChallenge();
           return;
         }
@@ -120,7 +122,8 @@ export default function ProfileScreen() {
           role: role,
           createdAt: new Date()
         });
-        alert(`Berhasil daftar sebagai ${role}`);
+        // BUG-02 FIX: Gunakan Alert.alert() React Native, bukan alert() browser
+        Alert.alert("Sukses", `Berhasil daftar sebagai ${role}`);
         setName('');
         setWhatsapp('');
         setSpamAnswer('');
@@ -131,7 +134,14 @@ export default function ProfileScreen() {
       // Handle login/registration errors
       let errorMessage = "Terjadi kesalahan. Silakan coba lagi.";
 
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      // BUG-01 FIX: Firebase SDK v9+ menggabungkan 'auth/user-not-found' dan
+      // 'auth/wrong-password' menjadi 'auth/invalid-credential' (kode lama tetap
+      // sebagai fallback untuk kompatibilitas).
+      if (
+        error.code === 'auth/invalid-credential' ||
+        error.code === 'auth/user-not-found' ||
+        error.code === 'auth/wrong-password'
+      ) {
         errorMessage = "Email atau password yang Anda masukkan salah.";
       } else if (error.code === 'auth/invalid-email') {
         errorMessage = "Format email tidak valid.";
@@ -145,7 +155,8 @@ export default function ProfileScreen() {
         errorMessage = "Password harus minimal 6 karakter.";
       }
 
-      alert(errorMessage);
+      // BUG-02 FIX: Gunakan Alert.alert() React Native, bukan alert() browser
+      Alert.alert("Error", errorMessage);
     }
   };
 
@@ -195,7 +206,8 @@ export default function ProfileScreen() {
                 style={styles.btnSpecial}
                 onPress={() => {
                   if (myStores.length >= 5) {
-                    alert("Anda sudah mencapai jumlah maksimal!");
+                    // BUG-02 FIX: Gunakan Alert.alert() React Native, bukan alert() browser
+                    Alert.alert("Batas Maksimal", "Anda sudah mencapai jumlah maksimal dagangan!");
                   } else {
                     router.push('/manage-store');
                   }

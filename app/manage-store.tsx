@@ -133,8 +133,20 @@ export default function ManageStore() {
     try {
       let finalUrl = image;
       if (image.startsWith('file://')) {
+        // BUG-04 FIX: Jika upload gagal (jaringan buruk / env var tidak ada),
+        // uploadToCloudinary mengembalikan null. Sebelumnya kode melanjutkan
+        // menyimpan URI lokal file:// ke Firestore yang tidak bisa diakses dari
+        // device lain. Sekarang proses dihentikan dan user diberi pesan jelas.
         const uploadedUrl = await uploadToCloudinary(image);
-        if (uploadedUrl) finalUrl = uploadedUrl;
+        if (!uploadedUrl) {
+          Alert.alert(
+            'Upload Foto Gagal',
+            'Foto tidak berhasil diunggah. Periksa koneksi internet Anda dan coba lagi.'
+          );
+          setLoading(false);
+          return;
+        }
+        finalUrl = uploadedUrl;
       }
 
       const hash = geohashForLocation([location.lat, location.lng]);
